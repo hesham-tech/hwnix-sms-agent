@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "C:\\Users\\hesham-mohamed\\.gradle\\daemon\\8.5\\com.hwnix.smsagent.app-merged_res-61:\\xml_file_paths.xml.flat",
+        "source": "C:\\Users\\hesham-mohamed\\.gradle\\daemon\\8.5\\com.hwnix.smsagent.app-main-63:\\xml\\file_paths.xml"
+    },
+    {
+        "merged": "C:\\Users\\hesham-mohamed\\.gradle\\daemon\\8.5\\com.hwnix.smsagent.app-merged_res-61:\\xml_backup_rules.xml.flat",
+        "source": "C:\\Users\\hesham-mohamed\\.gradle\\daemon\\8.5\\com.hwnix.smsagent.app-main-63:\\xml\\backup_rules.xml"
+    },
+    {
+        "merged": "C:\\Users\\hesham-mohamed\\.gradle\\daemon\\8.5\\com.hwnix.smsagent.app-merged_res-61:\\drawable_ic_app_logo.xml.flat",
+        "source": "C:\\Users\\hesham-mohamed\\.gradle\\daemon\\8.5\\com.hwnix.smsagent.app-main-63:\\drawable\\ic_app_logo.xml"
+    },
+    {
+        "merged": "C:\\Users\\hesham-mohamed\\.gradle\\daemon\\8.5\\com.hwnix.smsagent.app-merged_res-61:\\xml_data_extraction_rules.xml.flat",
+        "source": "C:\\Users\\hesham-mohamed\\.gradle\\daemon\\8.5\\com.hwnix.smsagent.app-main-63:\\xml\\data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.hwnix.smsagent.app-merged_res-61:/xml_file_paths.xml.flat",
+        "source": "com.hwnix.smsagent.app-main-63:/xml/file_paths.xml"
+    }
+]
