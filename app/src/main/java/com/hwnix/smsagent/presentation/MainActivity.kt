@@ -3,7 +3,11 @@ package com.hwnix.smsagent.presentation
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.ContentValues
+import android.content.Intent
+import android.net.Uri
+import android.os.PowerManager
 import android.provider.MediaStore
+import android.provider.Settings
 import android.os.Environment
 import android.os.Build
 import android.os.Bundle
@@ -19,6 +23,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BatteryAlert
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.SimCard
@@ -39,6 +45,7 @@ import com.google.gson.JsonObject
 import com.hwnix.smsagent.data.local.SessionManager
 import com.hwnix.smsagent.data.local.SyncEngine
 import com.hwnix.smsagent.data.remote.ApiClient
+import com.hwnix.smsagent.data.service.AgentForegroundService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -65,6 +72,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         sessionManager = SessionManager(applicationContext)
         syncEngine = SyncEngine(applicationContext)
+
+        // تشغيل الخدمة الأمامية تلقائياً عند فتح التطبيق
+        val serviceIntent = Intent(this, AgentForegroundService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
 
         setContent {
             MaterialTheme {
@@ -438,6 +453,14 @@ fun readSimCards(context: Context): List<SimInfo> {
     }
 }
 
+// دالة مساعدة للتحقق من حالة تحسين البطارية
+@android.annotation.SuppressLint("NewApi")
+private fun isBatteryOptimizationActive(context: android.content.Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false
+    val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+    return !pm.isIgnoringBatteryOptimizations(context.packageName)
+}
+
 // ======================================================
 // الشاشة الرئيسية
 // ======================================================
@@ -507,6 +530,18 @@ fun GatewayScreen(
         )
         kotlinx.coroutines.delay(1200)
         isStarting = false
+
+        // طلب إيقاف توفير البطارية تلقائياً عند أول تشغيل
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            if (!pm.isIgnoringBatteryOptimizations(context.packageName)) {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(intent)
+            }
+        }
 
         // فحص تحديث التطبيق
         try {
@@ -666,6 +701,68 @@ fun GatewayScreen(
                     Text("الـ UUID: $deviceUuid")
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("إصدار الإعدادات: $configVersion")
+                }
+            }
+
+            // ========== بطاقة حالة تحسين البطارية ==========
+            var isBatteryOptimized by remember {
+                mutableStateOf(
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                        isBatteryOptimizationActive(context)
+                    else false
+                )
+            }
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isBatteryOptimized)
+                        MaterialTheme.colorScheme.errorContainer
+                    else
+                        MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (isBatteryOptimized) Icons.Filled.BatteryAlert else Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = if (isBatteryOptimized)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isBatteryOptimized) "تحسين البطارية: مقيّد ⚠️" else "تحسين البطارية: مُعطَّل ✅",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (isBatteryOptimized)
+                                "قد يؤثر على عمل الخدمة في الخلفية"
+                            else
+                                "الخدمة تعمل بكامل طاقتها",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    if (isBatteryOptimized) {
+                        TextButton(onClick = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
+                                context.startActivity(intent)
+                                // إعادة فحص الحالة بعد العودة
+                                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                                isBatteryOptimized = !pm.isIgnoringBatteryOptimizations(context.packageName)
+                            }
+                        }) {
+                            Text("إعداد")
+                        }
+                    }
                 }
             }
 

@@ -1,0 +1,4 @@
+#Fri Jul 03 22:18:03 EEST 2026
+base.0=D\:\\Dev\\projects\\hwnix-gsm\\hwnix-sms-agent\\app\\build\\intermediates\\dex\\release\\minifyReleaseWithR8\\classes.dex
+path.0=classes.dex
+renamed.0=classes.dex
