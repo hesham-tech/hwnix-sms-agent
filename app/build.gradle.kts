@@ -114,6 +114,14 @@ android {
                     controllerFile.writeText(content)
                     println("✅ AgentDeviceController.php updated → v${vName} (code: ${vCode})")
                 }
+
+                // 3. حذف الـ APK من مشروع الأندرويد ليبقى نظيفاً بعد النسخ للباك إند
+                variant.outputs.map { it.outputFile }.forEach { apkFile ->
+                    if (apkFile.exists()) {
+                        apkFile.delete()
+                        println("🗑️ Deleted original APK from Android build outputs: ${apkFile.name}")
+                    }
+                }
             }
         }
     }
