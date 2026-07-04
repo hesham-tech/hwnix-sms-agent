@@ -87,21 +87,39 @@ android {
 
                 // 1. نسخ الـ APK إلى مجلد الباك إند (مع حذف القديمة)
                 val backendDir = file("../../hwmix-bill-api/public/downloads")
+                val androidApksDir = file("../apks")
+                
+                if (!androidApksDir.exists()) {
+                    androidApksDir.mkdirs()
+                }
+
+                // تنظيف مجلد apks الأندرويد القديم
+                androidApksDir.listFiles()?.filter { it.name.startsWith("sms-agent-") && it.name.endsWith(".apk") }?.forEach {
+                    it.delete()
+                }
+
                 if (backendDir.exists()) {
                     // حذف أي APK قديم قبل النسخ
                     backendDir.listFiles()?.filter { it.name.startsWith("sms-agent-") && it.name.endsWith(".apk") }?.forEach {
                         it.delete()
                         println("🗑️ Deleted old APK: ${it.name}")
                     }
-                    
-                    variant.outputs.map { it.outputFile }.forEach { apkFile ->
-                        if (apkFile.exists()) {
+                }
+                
+                variant.outputs.map { it.outputFile }.forEach { apkFile ->
+                    if (apkFile.exists()) {
+                        // نسخ للباك إند
+                        if (backendDir.exists()) {
                             val destFile = file("${backendDir.absolutePath}/$apkFileName")
                             apkFile.copyTo(destFile, overwrite = true)
-                            println("🚀 APK auto-copied successfully to: ${destFile.absolutePath}")
-                        } else {
-                            println("⚠️ Source APK file does not exist: ${apkFile.absolutePath}")
+                            println("🚀 APK auto-copied successfully to backend: ${destFile.absolutePath}")
                         }
+                        // نسخ لمجلد apks في الأندرويد
+                        val localDestFile = file("${androidApksDir.absolutePath}/$apkFileName")
+                        apkFile.copyTo(localDestFile, overwrite = true)
+                        println("🚀 APK auto-copied locally to: ${localDestFile.absolutePath}")
+                    } else {
+                        println("⚠️ Source APK file does not exist: ${apkFile.absolutePath}")
                     }
                 }
 
