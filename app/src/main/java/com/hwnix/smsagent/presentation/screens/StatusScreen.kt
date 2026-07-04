@@ -134,7 +134,7 @@ fun StatusScreen(
                 contentDescription = null,
                 modifier = Modifier.padding(end = 8.dp)
             )
-            Text("إعداد أرقام الخطوط (SIM)")
+            Text("إعدادات الجهاز والأرقام")
         }
 
         Spacer(modifier = Modifier.weight(1f))

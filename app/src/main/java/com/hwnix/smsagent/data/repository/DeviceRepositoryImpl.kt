@@ -167,8 +167,7 @@ class DeviceRepositoryImpl(
                 val body = response.body()!!
                 val result = mutableMapOf<Int, Pair<String, String>>()
                 if (body.get("status")?.asBoolean == true) {
-                    val data = body.getAsJsonObject("data")
-                    val lines = data.getAsJsonArray("lines")
+                    val lines = body.getAsJsonArray("data")
                     lines.forEach { element ->
                         val obj = element.asJsonObject
                         val slotIndex = obj.get("slot_index").asInt

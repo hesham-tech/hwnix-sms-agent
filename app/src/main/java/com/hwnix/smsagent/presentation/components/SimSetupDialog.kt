@@ -6,6 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.window.DialogProperties
 import com.hwnix.smsagent.domain.model.SimCard
 
 @Composable
@@ -25,9 +28,14 @@ fun SimSetupDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isSaving && !isFirstSetup) onDismiss() },
-        title = { Text(if (isFirstSetup) "إعداد الجهاز (مطلوب)" else "إعداد أرقام الخطوط") },
+        properties = DialogProperties(decorFitsSystemWindows = false),
+        title = { Text(if (isFirstSetup) "إعداد الجهاز (مطلوب)" else "إعدادات الجهاز والأرقام") },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
+            ) {
                 if (isFirstSetup) {
                     Text(
                         "يرجى إكمال إعداد الجهاز قبل المتابعة.",
