@@ -135,6 +135,11 @@ class UpdateManager(private val context: Context) {
                 output.write(data, 0, count)
             }
             output.flush()
+            try {
+                output.fd.sync() // إجبار النظام على كتابة الملف بالكامل للقرص لتفادي القراءة الناقصة أثناء التثبيت
+            } catch (e: Exception) {
+                Log.e(TAG, "File sync failed: ${e.message}")
+            }
             output.close()
             input.close()
 
@@ -171,6 +176,21 @@ class UpdateManager(private val context: Context) {
                 setDataAndType(apkUri, "application/vnd.android.package-archive")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
             }
+
+            // منح صلاحية القراءة صراحة لجميع الحزم المتنصتة على هذا الحدث (لحل مشكلة فشل التثبيت أول مرة على أندرويد 9 وما دونه)
+            val resInfoList = context.packageManager.queryIntentActivities(
+                intent,
+                android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
+            )
+            for (resolveInfo in resInfoList) {
+                val packageName = resolveInfo.activityInfo.packageName
+                context.grantUriPermission(
+                    packageName,
+                    apkUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+
             context.startActivity(intent)
         } catch (e: Exception) {
             Log.e(TAG, "Install APK failed: ${e.message}", e)

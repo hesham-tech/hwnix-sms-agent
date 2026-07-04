@@ -100,10 +100,21 @@ class AuthRepositoryImpl(
     private fun parseErrorMessage(errorBody: String?): String {
         if (!errorBody.isNullOrEmpty()) {
             try {
-                val json = JsonParser.parseString(errorBody).asJsonObject
-                val msg = json.get("message")?.asString
-                if (!msg.isNullOrEmpty()) return msg
-            } catch (ex: Exception) { /* ignore */ }
+                val trimmed = errorBody.trim()
+                if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+                    val json = JsonParser.parseString(trimmed).asJsonObject
+                    val msg = json.get("message")?.asString
+                    if (!msg.isNullOrEmpty()) return msg
+                } else {
+                    // إذا كان الرد عبارة عن صفحة HTML (مثل أخطاء PHP Laravel 500)، نقوم بإزالة الوسوم وعرض النص المفيد
+                    val cleanText = trimmed.replace(Regex("<[^>]*>"), " ").replace(Regex("\\s+"), " ").trim()
+                    if (cleanText.isNotEmpty()) {
+                        return "خطأ السيرفر: " + cleanText.take(250) + "..."
+                    }
+                }
+            } catch (ex: Exception) { 
+                return "خطأ أثناء محاولة قراءة استجابة السيرفر: ${ex.message}"
+            }
         }
         return "حدث خطأ غير معروف أثناء الاتصال بالسيرفر."
     }
