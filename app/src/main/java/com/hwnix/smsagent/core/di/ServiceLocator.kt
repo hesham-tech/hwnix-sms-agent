@@ -1,6 +1,7 @@
 package com.hwnix.smsagent.core.di
 
 import android.content.Context
+import android.os.Build
 import com.hwnix.smsagent.data.local.AppDatabase
 import com.hwnix.smsagent.data.local.SessionManager
 import com.hwnix.smsagent.data.remote.ApiClient
@@ -25,8 +26,22 @@ object ServiceLocator {
     private lateinit var appContext: Context
 
     fun initialize(context: Context) {
-        appContext = context.applicationContext
+        val deviceProtectedContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            context.createDeviceProtectedStorageContext()
+        } else {
+            context
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            // ترحيل الإعدادات المشتركة
+            deviceProtectedContext.moveSharedPreferencesFrom(context, "hwnix_sms_agent_prefs")
+            // ترحيل قاعدة بيانات Room المحلية
+            deviceProtectedContext.moveDatabaseFrom(context, "hwnix_sms_local.db")
+        }
+
+        appContext = deviceProtectedContext
     }
+
 
     val sessionManager: SessionManager by lazy {
         SessionManager(appContext)

@@ -10,8 +10,12 @@ import com.hwnix.smsagent.data.service.AgentForegroundService
 class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == "android.intent.action.QUICKBOOT_POWERON") {
-            Log.i("BootReceiver", "Device reboot detected. Starting agent background services...")
+        val action = intent.action
+        if (action == Intent.ACTION_BOOT_COMPLETED || 
+            action == Intent.ACTION_LOCKED_BOOT_COMPLETED ||
+            action == "android.intent.action.QUICKBOOT_POWERON"
+        ) {
+            Log.i("BootReceiver", "Device reboot detected (Action: $action). Starting background services...")
             
             // إطلاق الخدمة الأمامية لإيقاظ الهاتف والاتصال
             val serviceIntent = Intent(context, AgentForegroundService::class.java)
