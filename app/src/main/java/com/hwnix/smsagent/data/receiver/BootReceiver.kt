@@ -19,10 +19,14 @@ class BootReceiver : BroadcastReceiver() {
             
             // إطلاق الخدمة الأمامية لإيقاظ الهاتف والاتصال
             val serviceIntent = Intent(context, AgentForegroundService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
-            } else {
-                context.startService(serviceIntent)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent)
+                }
+            } catch (e: Exception) {
+                Log.e("BootReceiver", "Failed to start foreground service on boot: ${e.message}", e)
             }
         }
     }

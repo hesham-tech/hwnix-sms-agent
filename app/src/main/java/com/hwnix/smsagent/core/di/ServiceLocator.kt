@@ -23,7 +23,7 @@ import com.hwnix.smsagent.manager.update.UpdateManager
 // محدد الخدمات لتوفير وحقن الاعتمادات يدوياً بشكل آمن وتجنب تكرار التهيئة
 object ServiceLocator {
 
-    private lateinit var appContext: Context
+    lateinit var appContext: Context
 
     fun initialize(context: Context) {
         val deviceProtectedContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

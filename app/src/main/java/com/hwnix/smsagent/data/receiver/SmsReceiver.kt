@@ -29,8 +29,8 @@ class SmsReceiver : BroadcastReceiver() {
             // تجميع أجزاء الرسالة الطويلة (multipart) حسب المُرسِل
             val grouped = messages.groupBy { it.displayOriginatingAddress ?: "unknown" }
 
-            val smsDao = AppDatabase.getDatabase(context).smsDao()
-            val syncEngine = SyncEngine(context)
+            val smsDao = com.hwnix.smsagent.core.di.ServiceLocator.database.smsDao()
+            val syncEngine = SyncEngine(com.hwnix.smsagent.core.di.ServiceLocator.appContext)
 
             for ((sender, parts) in grouped) {
                 // دمج جميع الأجزاء في نص واحد
