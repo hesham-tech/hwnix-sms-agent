@@ -7,25 +7,37 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.SimCard
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hwnix.smsagent.presentation.status.StatusUiState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatusScreen(
     state: StatusUiState,
+    onRefresh: () -> Unit,
     onSyncNowClick: () -> Unit,
     onSimSetupClick: () -> Unit,
     onLogoutClick: () -> Unit,
     onBatteryOptimizeClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    PullToRefreshBox(
+        isRefreshing = state.isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
         // بطاقة معلومات الجهاز
         Card(
             modifier = Modifier
@@ -137,7 +149,7 @@ fun StatusScreen(
             Text("إعدادات الجهاز والأرقام")
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedButton(
             onClick = onLogoutClick,
@@ -149,4 +161,5 @@ fun StatusScreen(
             Text("تسجيل الخروج وإلغاء الربط")
         }
     }
+}
 }

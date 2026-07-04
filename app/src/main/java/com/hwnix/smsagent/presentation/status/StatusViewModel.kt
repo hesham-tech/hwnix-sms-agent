@@ -34,6 +34,47 @@ class StatusViewModel(
         refreshDeviceInfo()
     }
 
+    fun refreshAll(currentVersionCode: Int) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true) }
+            
+            // تحديث معلومات الجهاز محلياً وفحص تحسين البطارية
+            refreshDeviceInfo()
+            
+            // فحص وجود تحديث جديد من السيرفر
+            try {
+                val result = checkUpdateUseCase.execute()
+                if (result.isSuccess) {
+                    val update = result.getOrNull()
+                    if (update != null && update.versionCode > currentVersionCode) {
+                        _uiState.update {
+                            it.copy(
+                                updateVersionName = update.versionName,
+                                updateDownloadUrl = update.downloadUrl,
+                                showUpdateDialog = true
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // ignore update failures during pull-to-refresh
+            }
+            
+            // مزامنة أرقام الخطوط المخزنة
+            try {
+                val deviceId = sessionManager.getDeviceId()
+                if (deviceId != -1L) {
+                    deviceRepository.getDeviceLines(deviceId)
+                }
+            } catch (e: Exception) {
+                // ignore line fetch failures during refresh
+            }
+
+            kotlinx.coroutines.delay(600)
+            _uiState.update { it.copy(isRefreshing = false) }
+        }
+    }
+
     fun refreshDeviceInfo() {
         val deviceIdVal = sessionManager.getDeviceId().let { id ->
             if (id == -1L) "غير مسجل" else id.toString()

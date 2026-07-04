@@ -200,6 +200,7 @@ class MainActivity : ComponentActivity() {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 StatusScreen(
                                     state = statusState,
+                                    onRefresh = { statusViewModel.refreshAll(currentVersionCode) },
                                     onSyncNowClick = { statusViewModel.performFullSync(syncEngine) },
                                     onSimSetupClick = { statusViewModel.openSimSetupDialog() },
                                     onLogoutClick = {
