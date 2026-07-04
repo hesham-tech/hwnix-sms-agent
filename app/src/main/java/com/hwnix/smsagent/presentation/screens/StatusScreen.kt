@@ -25,7 +25,8 @@ fun StatusScreen(
     onSyncNowClick: () -> Unit,
     onSimSetupClick: () -> Unit,
     onLogoutClick: () -> Unit,
-    onBatteryOptimizeClick: () -> Unit
+    onBatteryOptimizeClick: () -> Unit,
+    onAutostartClick: () -> Unit
 ) {
     PullToRefreshBox(
         isRefreshing = state.isRefreshing,
@@ -117,6 +118,44 @@ fun StatusScreen(
                 }
                 if (state.isBatteryOptimized) {
                     TextButton(onClick = onBatteryOptimizeClick) {
+                        Text("إعداد")
+                    }
+                }
+            }
+        }
+
+        if (state.isAutostartAvailable) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "التشغيل التلقائي (Autostart) ⚠️",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "يرجى تفعيل التشغيل التلقائي بعد إعادة التشغيل لضمان استقرار الخدمة.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    TextButton(onClick = onAutostartClick) {
                         Text("إعداد")
                     }
                 }

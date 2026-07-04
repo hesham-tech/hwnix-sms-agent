@@ -210,6 +210,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onBatteryOptimizeClick = {
                                         statusViewModel.disableBatteryOptimization()
+                                    },
+                                    onAutostartClick = {
+                                        statusViewModel.disableAutostartRestriction()
                                     }
                                 )
                                 IconButton(

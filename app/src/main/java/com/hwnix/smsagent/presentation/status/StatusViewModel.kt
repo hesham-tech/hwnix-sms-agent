@@ -87,7 +87,8 @@ class StatusViewModel(
                 configVersion = sessionManager.getConfigVersion().toString(),
                 gatewayName = sessionManager.getGatewayName(),
                 isFirstSetup = isFirstSetupVal,
-                isBatteryOptimized = batteryManager.isBatteryOptimizationActive()
+                isBatteryOptimized = batteryManager.isBatteryOptimizationActive(),
+                isAutostartAvailable = batteryManager.isAutostartAvailable()
             )
         }
         
@@ -103,12 +104,19 @@ class StatusViewModel(
 
     fun checkBatteryOptimization() {
         _uiState.update {
-            it.copy(isBatteryOptimized = batteryManager.isBatteryOptimizationActive())
+            it.copy(
+                isBatteryOptimized = batteryManager.isBatteryOptimizationActive(),
+                isAutostartAvailable = batteryManager.isAutostartAvailable()
+            )
         }
     }
 
     fun disableBatteryOptimization() {
         batteryManager.requestIgnoreBatteryOptimizations()
+    }
+
+    fun disableAutostartRestriction() {
+        batteryManager.requestAutostartPermission()
     }
 
     fun openUpdateDialog(versionName: String, downloadUrl: String) {

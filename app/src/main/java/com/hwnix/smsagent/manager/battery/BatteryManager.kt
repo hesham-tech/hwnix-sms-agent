@@ -42,4 +42,82 @@ class BatteryManager(private val context: Context) {
             }
         }
     }
+
+    /**
+     * التحقق مما إذا كان جهاز المستخدم يدعم إعدادات التشغيل التلقائي المخصصة (Autostart).
+     */
+    fun isAutostartAvailable(): Boolean {
+        val manufacturer = Build.MANUFACTURER.lowercase()
+        return manufacturer.contains("xiaomi") ||
+               manufacturer.contains("oppo") ||
+               manufacturer.contains("vivo") ||
+               manufacturer.contains("huawei") ||
+               manufacturer.contains("samsung")
+    }
+
+    /**
+     * فتح صفحة إعدادات التشغيل التلقائي الخاصة بالشركة المصنعة (OEM).
+     */
+    fun requestAutostartPermission() {
+        val intent = Intent()
+        val manufacturer = Build.MANUFACTURER.lowercase()
+        var componentName: android.content.ComponentName? = null
+
+        when {
+            manufacturer.contains("xiaomi") -> {
+                componentName = android.content.ComponentName(
+                    "com.miui.securitycenter",
+                    "com.miui.permcenter.autostart.AutoStartManagementActivity"
+                )
+            }
+            manufacturer.contains("oppo") -> {
+                componentName = android.content.ComponentName(
+                    "com.coloros.safecenter",
+                    "com.coloros.safecenter.permission.startup.StartupAppListActivity"
+                )
+            }
+            manufacturer.contains("vivo") -> {
+                componentName = android.content.ComponentName(
+                    "com.vivo.permissionmanager",
+                    "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"
+                )
+            }
+            manufacturer.contains("huawei") -> {
+                componentName = android.content.ComponentName(
+                    "com.huawei.systemmanager",
+                    "com.huawei.systemmanager.optimize.bootstart.BootStartActivity"
+                )
+            }
+            manufacturer.contains("samsung") -> {
+                componentName = android.content.ComponentName(
+                    "com.samsung.android.lool",
+                    "com.samsung.android.sm.ui.battery.BatteryActivity"
+                )
+            }
+        }
+
+        if (componentName != null) {
+            intent.component = componentName
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            try {
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                openAppDetailsSettings()
+            }
+        } else {
+            openAppDetailsSettings()
+        }
+    }
+
+    private fun openAppDetailsSettings() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:${context.packageName}")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            // ignore
+        }
+    }
 }

@@ -9,6 +9,7 @@ data class StatusUiState(
     val configVersion: String = "1",
     val isBatteryOptimized: Boolean = false,
     val isRefreshing: Boolean = false,
+    val isAutostartAvailable: Boolean = false,
     
     // التحديثات
     val showUpdateDialog: Boolean = false,
