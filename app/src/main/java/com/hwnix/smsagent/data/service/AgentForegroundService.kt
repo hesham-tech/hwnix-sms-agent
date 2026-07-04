@@ -48,11 +48,8 @@ class AgentForegroundService : Service() {
             PowerManager.PARTIAL_WAKE_LOCK,
             "HWNix:AgentWakeLock"
         ).apply { setReferenceCounted(false) }
-    }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i(TAG, "Starting Agent Foreground Service...")
-
+        // تشغيل startForeground فوراً في onCreate لمنع أي كراش أو تأخر (خلال الـ 5 ثواني المطلوبة من نظام أندرويد)
         val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         } else {
@@ -73,8 +70,11 @@ class AgentForegroundService : Service() {
             .build()
 
         startForeground(NOTIFICATION_ID, notification)
-        startPeriodicSyncLoop()
+    }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.i(TAG, "Starting Agent Foreground Service...")
+        startPeriodicSyncLoop()
         return START_STICKY
     }
 

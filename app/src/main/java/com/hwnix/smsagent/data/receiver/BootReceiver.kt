@@ -13,9 +13,11 @@ class BootReceiver : BroadcastReceiver() {
         val action = intent.action
         if (action == Intent.ACTION_BOOT_COMPLETED || 
             action == Intent.ACTION_LOCKED_BOOT_COMPLETED ||
+            action == Intent.ACTION_USER_PRESENT ||
+            action == Intent.ACTION_POWER_CONNECTED ||
             action == "android.intent.action.QUICKBOOT_POWERON"
         ) {
-            Log.i("BootReceiver", "Device reboot detected (Action: $action). Starting background services...")
+            Log.i("BootReceiver", "System event detected (Action: $action). Starting background services...")
             
             // إطلاق الخدمة الأمامية لإيقاظ الهاتف والاتصال
             val serviceIntent = Intent(context, AgentForegroundService::class.java)
@@ -26,7 +28,7 @@ class BootReceiver : BroadcastReceiver() {
                     context.startService(serviceIntent)
                 }
             } catch (e: Exception) {
-                Log.e("BootReceiver", "Failed to start foreground service on boot: ${e.message}", e)
+                Log.e("BootReceiver", "Failed to start foreground service on system event: ${e.message}", e)
             }
         }
     }
