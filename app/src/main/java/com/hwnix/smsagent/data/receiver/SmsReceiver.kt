@@ -12,6 +12,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.UUID
 
+// مستقبل الرسائل الواردة — يجمع أجزاء الرسالة الطويلة في رسالة واحدة قبل الحفظ
 class SmsReceiver : BroadcastReceiver() {
 
     companion object {
@@ -21,39 +22,36 @@ class SmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
-            for (sms in messages) {
-                val sender = sms.displayOriginatingAddress ?: continue
-                val body = sms.displayMessageBody ?: ""
-                val timestamp = sms.timestampMillis
-                
-                // للحصول على شريحة الـ SIM المستلمة (إذا كانت متوفرة)
-                val subscriptionId = intent.getIntExtra("subscription", -1).toString()
+            if (messages.isNullOrEmpty()) return
 
-                Log.i(TAG, "Incoming SMS intercepted from: $sender on SIM Slot ID: $subscriptionId")
+            val subscriptionId = intent.getIntExtra("subscription", -1).toString()
 
-                // معرف محلي فريد للرسالة لمنع التكرار
-                val messageRef = UUID.randomUUID().toString()
+            // تجميع أجزاء الرسالة الطويلة (multipart) حسب المُرسِل
+            val grouped = messages.groupBy { it.displayOriginatingAddress ?: "unknown" }
+
+            val smsDao = AppDatabase.getDatabase(context).smsDao()
+            val syncEngine = SyncEngine(context)
+
+            for ((sender, parts) in grouped) {
+                // دمج جميع الأجزاء في نص واحد
+                val fullBody = parts.joinToString("") { it.displayMessageBody ?: "" }
+                val timestamp = parts.first().timestampMillis
+
+                Log.i(TAG, "SMS from: $sender | SIM: $subscriptionId | Parts: ${parts.size} | Chars: ${fullBody.length}")
 
                 val smsEntity = SmsEntity(
                     phoneNumber = sender,
-                    messageBody = body,
+                    messageBody = fullBody,
                     direction = "incoming",
                     status = "pending_upload",
-                    messageRef = messageRef,
+                    messageRef = UUID.randomUUID().toString(),
                     subscriptionId = subscriptionId,
                     sentAt = timestamp
                 )
 
-                // تخزين ومزامنة فورية بالخلفية
-                val smsDao = AppDatabase.getDatabase(context).smsDao()
-                val syncEngine = SyncEngine(context)
-
                 GlobalScope.launch {
                     try {
-                        // 1. التخزين المحلي
                         smsDao.insert(smsEntity)
-                        
-                        // 2. تفعيل محرك المزامنة فوراً لرفعها
                         syncEngine.performFullSync()
                     } catch (e: Exception) {
                         Log.e(TAG, "Error processing incoming SMS: ${e.message}")

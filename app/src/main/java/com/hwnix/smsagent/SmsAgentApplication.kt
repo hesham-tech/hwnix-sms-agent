@@ -7,6 +7,8 @@ class SmsAgentApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.hwnix.smsagent.core.di.ServiceLocator.initialize(this)
         Log.i("SmsAgentApp", "HWNix SMS Gateway Agent Application Initialized.")
     }
+
 }

@@ -149,11 +149,26 @@ class SyncEngine(private val context: Context) {
         val deviceId = sessionManager.getDeviceId()
         if (deviceId == -1L) return@withContext false
 
+        val batteryLevel = try {
+            val bm = context.getSystemService(android.content.Context.BATTERY_SERVICE) as android.os.BatteryManager
+            bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        } catch (e: Exception) { 100 }
+
+        val networkType = try {
+            val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+            when {
+                caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true -> "wifi"
+                caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) == true -> "cellular"
+                else -> "unknown"
+            }
+        } catch (e: Exception) { "unknown" }
+
         val payload = JsonObject().apply {
             addProperty("device_id", deviceId)
-            addProperty("network_type", "wifi") // يمكن ديناميكياً جلبه من ConnectivityManager
-            addProperty("battery_level", 85) // يمكن ديناميكياً جلبه من BatteryManager
-            addProperty("is_internet_available", true)
+            addProperty("network_type", networkType)
+            addProperty("battery_level", batteryLevel)
+            addProperty("is_internet_available", networkType != "unknown")
             addProperty("free_memory_bytes", Runtime.getRuntime().freeMemory())
             addProperty("free_storage_bytes", context.filesDir.usableSpace)
             addProperty("app_version", "1.0.11")
@@ -296,16 +311,26 @@ class SyncEngine(private val context: Context) {
     }
 
     /**
-     * تنفيذ أمر إرسال رسالة SMS حقيقية عبر الـ SmsManager للجهاز.
+     * تنظيف رقم الهاتف: حذف مفتاح الدولة (+20) وعلامة + للحصول على الصيغة المحلية.
+     */
+    private fun cleanPhoneNumber(phone: String): String {
+        var cleaned = phone.trim()
+        if (cleaned.startsWith("+20")) cleaned = "0" + cleaned.removePrefix("+20")
+        else if (cleaned.startsWith("+")) cleaned = "0" + cleaned.removePrefix("+")
+        return cleaned
+    }
+
+    /**
+     * تنفيذ أمر إرسال رسالة SMS مع تتبع حالة التسليم الفعلي.
      */
     private fun executeSmsSendCommand(commandId: Long, payload: JsonObject) {
         val messageId = payload.get("message_id").asLong
-        val phoneNumber = payload.get("phone_number").asString
+        val rawPhone = payload.get("phone_number").asString
+        val phoneNumber = cleanPhoneNumber(rawPhone)
         val messageBody = payload.get("message_body").asString
         val slotIndex = payload.get("slot_index").asInt
-        
+
         try {
-            // استخدام مدير الرسائل لإرسال الرسالة
             val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 context.getSystemService(SmsManager::class.java)
             } else {
@@ -313,21 +338,38 @@ class SyncEngine(private val context: Context) {
                 SmsManager.getDefault()
             }
 
-            // هنا نقوم بالإرسال، وبشكل مبسط نفترض النجاح للتسجيل، ومستقبلاً نربطها مع SentIntent
-            smsManager.sendTextMessage(phoneNumber, null, messageBody, null, null)
-            
-            // إبلاغ السيرفر بنجاح معالجة الأمر وتقديم الرسالة للشبكة
-            val responseObj = JsonObject().apply {
-                addProperty("message_id", messageId)
-                addProperty("info", "SmsManager executed successfully.")
-            }
-            
-            // تشغيل التقرير بنبض خلفي
-            kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                reportCommandStatus(commandId, "executed", responseObj)
-            }
+            // إعداد SentIntent لمعرفة نتيجة الإرسال للشبكة
+            val sentIntent = android.app.PendingIntent.getBroadcast(
+                context,
+                commandId.toInt(),
+                android.content.Intent("com.hwnix.smsagent.SMS_SENT").apply {
+                    putExtra("command_id", commandId)
+                    putExtra("message_id", messageId)
+                },
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                    android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                else android.app.PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
+            // إعداد DeliveryIntent لمعرفة التسليم الفعلي للمستقبِل
+            val deliveryIntent = android.app.PendingIntent.getBroadcast(
+                context,
+                (commandId + 10000).toInt(),
+                android.content.Intent("com.hwnix.smsagent.SMS_DELIVERED").apply {
+                    putExtra("command_id", commandId)
+                    putExtra("message_id", messageId)
+                },
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                    android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                else android.app.PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
+            // إرسال الرسالة مع الـ intents
+            smsManager.sendTextMessage(phoneNumber, null, messageBody, sentIntent, deliveryIntent)
+            Log.i(TAG, "SMS queued to: $phoneNumber (raw: $rawPhone), cmd: $commandId")
+
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to send text message physically: ${e.message}")
+            Log.e(TAG, "Failed to send SMS: ${e.message}")
             val responseObj = JsonObject().apply {
                 addProperty("message_id", messageId)
                 addProperty("error", e.message ?: "Unknown hardware sending error")

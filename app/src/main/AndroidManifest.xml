@@ -23,6 +23,8 @@
     <!-- أذونات قراءة وكتابة الملفات -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
 
     <application
         android:name=".SmsAgentApplication"
@@ -77,6 +79,17 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+        <!-- مستلم تأكيد إرسال وتسليم الرسائل الصادرة -->
+        <receiver
+            android:name=".data.receiver.SmsDeliveryReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.hwnix.smsagent.SMS_SENT" />
+                <action android:name="com.hwnix.smsagent.SMS_DELIVERED" />
             </intent-filter>
         </receiver>
 

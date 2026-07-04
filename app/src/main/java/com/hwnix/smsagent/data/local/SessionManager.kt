@@ -27,6 +27,9 @@ class SessionManager(context: Context) {
         private const val KEY_POLLING_INTERVAL = "polling_interval"
         private const val KEY_LOGGING_LEVEL = "logging_level"
         private const val KEY_MAX_RETRY = "max_retry"
+        private const val KEY_SETUP_COMPLETE = "setup_complete"
+        private const val KEY_GATEWAY_NAME = "gateway_name"
+
         
         private const val DEFAULT_BASE_URL = "https://api-teste.hwnix.com/api/" // الافتراضي للمحاكي المحلي
     }
@@ -114,11 +117,41 @@ class SessionManager(context: Context) {
         sharedPreferences.edit().putInt(KEY_MAX_RETRY, count).apply()
     }
 
+    /**
+     * إدارة حالة إكمال الإعداد الأولي (اسم البوابة + أرقام الخطوط).
+     */
+    fun isSetupComplete(): Boolean {
+        return sharedPreferences.getBoolean(KEY_SETUP_COMPLETE, false)
+    }
+
+    fun markSetupComplete() {
+        sharedPreferences.edit().putBoolean(KEY_SETUP_COMPLETE, true).apply()
+    }
+
+    fun getGatewayName(): String {
+        return sharedPreferences.getString(KEY_GATEWAY_NAME, "") ?: ""
+    }
+
+    fun saveGatewayName(name: String) {
+        sharedPreferences.edit().putString(KEY_GATEWAY_NAME, name).apply()
+    }
+
+    /**
+     * تنظيف رقم الهاتف: حذف مفتاح الدولة (+20) وعلامة + للحصول على الصيغة المحلية.
+     */
+    fun cleanPhoneNumber(phone: String): String {
+        var cleaned = phone.trim()
+        if (cleaned.startsWith("+20")) cleaned = "0" + cleaned.removePrefix("+20")
+        else if (cleaned.startsWith("+")) cleaned = "0" + cleaned.removePrefix("+")
+        return cleaned
+    }
+
     fun clearSession() {
         sharedPreferences.edit()
             .remove(KEY_AUTH_TOKEN)
             .remove(KEY_DEVICE_ID)
             .remove(KEY_CONFIG_VERSION)
+            .remove(KEY_SETUP_COMPLETE)
             .apply()
     }
 }

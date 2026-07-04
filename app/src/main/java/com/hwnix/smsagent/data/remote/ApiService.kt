@@ -17,8 +17,12 @@ interface ApiService {
     @POST("v1/agent/auth/login")
     suspend fun login(@Body body: JsonObject): Response<JsonObject>
 
+    @POST("v1/agent/auth/register")
+    suspend fun register(@Body body: JsonObject): Response<JsonObject>
+
     @POST("v1/agent/auth/refresh")
     suspend fun refreshToken(@Body body: JsonObject): Response<JsonObject>
+
 
     @POST("v1/agent/device/register")
     suspend fun registerDevice(
