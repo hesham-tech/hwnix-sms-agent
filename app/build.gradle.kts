@@ -29,6 +29,8 @@ android {
             storePassword = "hwnix1234"
             keyAlias = "hwnix_alias"
             keyPassword = "hwnix1234"
+            enableV1Signing = true
+            enableV2Signing = true
         }
     }
 

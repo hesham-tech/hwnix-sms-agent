@@ -77,7 +77,7 @@ class DeviceRepositoryImpl(
             val linesArray = JsonArray()
             simCards.forEach { card ->
                 val lineObj = JsonObject().apply {
-                    addProperty("slot_index", card.slotIndex.toString())
+                    addProperty("slot_index", card.slotIndex)
                     addProperty("subscription_id", card.subscriptionId)
                     addProperty("carrier", card.carrier)
                     addProperty("phone_number", card.phoneNumber)
@@ -89,7 +89,7 @@ class DeviceRepositoryImpl(
 
             val payload = JsonObject().apply {
                 addProperty("device_id", sessionManager.getDeviceId())
-                add("lines", linesArray)
+                add("sims", linesArray)
             }
 
             val key = UUID.randomUUID().toString()

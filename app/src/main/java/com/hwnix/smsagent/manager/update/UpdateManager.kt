@@ -170,8 +170,17 @@ class UpdateManager(private val context: Context) {
                 return
             }
 
+            // ترحيل الملف للمجلد المؤقت الداخلي (cacheDir) لضمان موثوقية الوصول التام لهواتف أندرويد 9 وأقل
+            val cacheApkFile = if (apkFile.parentFile?.absolutePath != context.cacheDir.absolutePath) {
+                val target = File(context.cacheDir, apkFile.name)
+                apkFile.copyTo(target, overwrite = true)
+                target
+            } else {
+                apkFile
+            }
+
             val authority = "${context.packageName}.fileprovider"
-            val apkUri = FileProvider.getUriForFile(context, authority, apkFile)
+            val apkUri = FileProvider.getUriForFile(context, authority, cacheApkFile)
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(apkUri, "application/vnd.android.package-archive")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION

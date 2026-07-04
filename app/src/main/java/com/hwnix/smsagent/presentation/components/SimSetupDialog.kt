@@ -25,12 +25,12 @@ fun SimSetupDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isSaving && !isFirstSetup) onDismiss() },
-        title = { Text(if (isFirstSetup) "إعداد البوابة (مطلوب)" else "إعداد أرقام الخطوط") },
+        title = { Text(if (isFirstSetup) "إعداد الجهاز (مطلوب)" else "إعداد أرقام الخطوط") },
         text = {
             Column {
                 if (isFirstSetup) {
                     Text(
-                        "يرجى إكمال إعداد البوابة قبل المتابعة.",
+                        "يرجى إكمال إعداد الجهاز قبل المتابعة.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -40,7 +40,7 @@ fun SimSetupDialog(
                 OutlinedTextField(
                     value = gatewayName,
                     onValueChange = onGatewayNameChange,
-                    label = { Text("اسم البوابة *") },
+                    label = { Text("اسم الجهاز *") },
                     placeholder = { Text("مثال: الفرع الرئيسي") },
                     singleLine = true,
                     isError = gatewayName.isBlank(),

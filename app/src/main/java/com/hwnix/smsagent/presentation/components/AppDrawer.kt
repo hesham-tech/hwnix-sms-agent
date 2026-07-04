@@ -43,7 +43,7 @@ fun AppDrawer(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            "بوابة الرسائل النصية",
+                            "الجهاز",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
