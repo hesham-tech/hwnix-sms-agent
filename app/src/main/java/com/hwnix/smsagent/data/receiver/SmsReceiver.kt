@@ -10,6 +10,7 @@ import com.hwnix.smsagent.data.local.AppDatabase
 import com.hwnix.smsagent.data.local.SyncEngine
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import java.util.UUID
 
 // مستقبل الرسائل الواردة — يجمع أجزاء الرسالة الطويلة في رسالة واحدة قبل الحفظ
@@ -25,39 +26,81 @@ class SmsReceiver : BroadcastReceiver() {
             if (messages.isNullOrEmpty()) return
 
             val subscriptionId = intent.getIntExtra("subscription", -1).toString()
-
-            // تجميع أجزاء الرسالة الطويلة (multipart) حسب المُرسِل
             val grouped = messages.groupBy { it.displayOriginatingAddress ?: "unknown" }
 
-            val smsDao = com.hwnix.smsagent.core.di.ServiceLocator.database.smsDao()
-            val syncEngine = SyncEngine(com.hwnix.smsagent.core.di.ServiceLocator.appContext)
+            val pendingResult = goAsync()
 
-            for ((sender, parts) in grouped) {
-                // دمج جميع الأجزاء في نص واحد
-                val fullBody = parts.joinToString("") { it.displayMessageBody ?: "" }
-                val timestamp = parts.first().timestampMillis
+            GlobalScope.launch(Dispatchers.IO) {
+                try {
+                    val isUnlocked = androidx.core.os.UserManagerCompat.isUserUnlocked(context)
 
-                Log.i(TAG, "SMS from: $sender | SIM: $subscriptionId | Parts: ${parts.size} | Chars: ${fullBody.length}")
+                    for ((sender, parts) in grouped) {
+                        val fullBody = parts.joinToString("") { it.displayMessageBody ?: "" }
+                        val timestamp = parts.first().timestampMillis
 
-                val smsEntity = SmsEntity(
-                    phoneNumber = sender,
-                    messageBody = fullBody,
-                    direction = "incoming",
-                    status = "pending_upload",
-                    messageRef = UUID.randomUUID().toString(),
-                    subscriptionId = subscriptionId,
-                    sentAt = timestamp
-                )
+                        Log.i(TAG, "Incoming SMS from: $sender | SIM: $subscriptionId | Unlocked: $isUnlocked")
 
-                GlobalScope.launch {
-                    try {
-                        smsDao.insert(smsEntity)
-                        syncEngine.performFullSync()
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error processing incoming SMS: ${e.message}")
+                        if (isUnlocked) {
+                            try {
+                                val smsDao = com.hwnix.smsagent.core.di.ServiceLocator.database.smsDao()
+                                val syncEngine = SyncEngine(com.hwnix.smsagent.core.di.ServiceLocator.appContext)
+
+                                val smsEntity = SmsEntity(
+                                    phoneNumber = sender,
+                                    messageBody = fullBody,
+                                    direction = "incoming",
+                                    status = "pending_upload",
+                                    messageRef = UUID.randomUUID().toString(),
+                                    subscriptionId = subscriptionId,
+                                    sentAt = timestamp
+                                )
+                                smsDao.insert(smsEntity)
+                                syncEngine.performFullSync()
+                                Log.i(TAG, "Directly saved incoming SMS to database.")
+                            } catch (dbEx: Exception) {
+                                Log.e(TAG, "Failed database write under unlocked state, falling back to file storage: ${dbEx.message}")
+                                saveToDeviceProtectedStorage(context, sender, fullBody, subscriptionId, timestamp)
+                            }
+                        } else {
+                            // وضع Direct Boot (قاعدة البيانات المشفرة والـ Keystore غير متاحين)
+                            // نحفظ الرسالة مؤقتاً كملف JSON في مساحة التخزين المحمية للجهاز (Device Protected Storage)
+                            saveToDeviceProtectedStorage(context, sender, fullBody, subscriptionId, timestamp)
+                        }
                     }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing incoming SMS receiver: ${e.message}", e)
+                } finally {
+                    pendingResult.finish()
                 }
             }
+        }
+    }
+
+    private fun saveToDeviceProtectedStorage(
+        context: Context,
+        sender: String,
+        body: String,
+        subscriptionId: String,
+        timestamp: Long
+    ) {
+        try {
+            val deviceProtectedContext = context.createDeviceProtectedStorageContext()
+            val directory = java.io.File(deviceProtectedContext.filesDir, "direct_boot_sms")
+            if (!directory.exists()) {
+                directory.mkdirs()
+            }
+            val file = java.io.File(directory, "sms_${System.currentTimeMillis()}_${UUID.randomUUID()}.json")
+            val json = com.google.gson.JsonObject().apply {
+                addProperty("phoneNumber", sender)
+                addProperty("messageBody", body)
+                addProperty("subscriptionId", subscriptionId)
+                addProperty("sentAt", timestamp)
+            }.toString()
+
+            file.writeText(json)
+            Log.i(TAG, "Successfully queued SMS in device protected files: ${file.name}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write SMS payload to device protected storage: ${e.message}", e)
         }
     }
 }

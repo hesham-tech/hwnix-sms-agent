@@ -30,16 +30,57 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
         when (intent.action) {
             ACTION_SMS_SENT -> {
                 val status = when (resultCode) {
-                    Activity.RESULT_OK -> "sent"
+                    Activity.RESULT_OK -> "executed"
                     else -> "failed"
                 }
                 Log.i(TAG, "SMS_SENT — cmd: $commandId, msg: $messageId, status: $status")
-                updateMessageStatus(context, commandId, messageId, status)
+                reportCommandExecution(context, commandId, messageId, status, resultCode)
             }
             ACTION_SMS_DELIVERED -> {
                 Log.i(TAG, "SMS_DELIVERED — cmd: $commandId, msg: $messageId")
                 updateMessageStatus(context, commandId, messageId, "delivered")
             }
+        }
+    }
+
+    private fun reportCommandExecution(context: Context, commandId: Long, messageId: Long, status: String, resultCode: Int) {
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                val apiService = ApiClient.getService(context)
+                val sessionManager = SessionManager(context)
+                val errorMsg = if (status == "failed") {
+                    getSmsErrorString(resultCode)
+                } else null
+
+                val responsePayload = JsonObject().apply {
+                    addProperty("message_id", messageId)
+                    if (errorMsg != null) {
+                        addProperty("error", errorMsg)
+                    }
+                }
+
+                val payload = JsonObject().apply {
+                    addProperty("device_id", sessionManager.getDeviceId())
+                    addProperty("status", status)
+                    add("response_payload", responsePayload)
+                }
+
+                val key = "CMD_EXEC_REP_${commandId}_${status}"
+                apiService.executeCommand(commandId, key, payload)
+                Log.i(TAG, "Command $commandId execution status reported: $status")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to report command execution: ${e.message}")
+            }
+        }
+    }
+
+    private fun getSmsErrorString(resultCode: Int): String {
+        return when (resultCode) {
+            android.telephony.SmsManager.RESULT_ERROR_GENERIC_FAILURE -> "Generic failure"
+            android.telephony.SmsManager.RESULT_ERROR_NO_SERVICE -> "No service"
+            android.telephony.SmsManager.RESULT_ERROR_NULL_PDU -> "Null PDU"
+            android.telephony.SmsManager.RESULT_ERROR_RADIO_OFF -> "Radio off"
+            else -> "Unknown SMS error code: $resultCode"
         }
     }
 

@@ -44,14 +44,17 @@ class DeviceRepositoryImpl(
 
     override suspend fun registerDevice(): Result<Long> {
         return try {
+            val customName = sessionManager.getGatewayName()
+            val devName = if (customName.isNotBlank()) customName else Build.MODEL
+
             val payload = JsonObject().apply {
                 addProperty("android_id", sessionManager.getDeviceUuid())
                 addProperty("uuid", sessionManager.getDeviceUuid())
-                addProperty("device_name", Build.MODEL)
+                addProperty("device_name", devName)
                 addProperty("brand", Build.BRAND)
                 addProperty("model", Build.MODEL)
                 addProperty("android_version", Build.VERSION.RELEASE)
-                addProperty("app_version", "1.0.11")
+                addProperty("app_version", com.hwnix.smsagent.BuildConfig.VERSION_NAME)
             }
 
             val key = UUID.randomUUID().toString()
@@ -89,6 +92,10 @@ class DeviceRepositoryImpl(
 
             val payload = JsonObject().apply {
                 addProperty("device_id", sessionManager.getDeviceId())
+                val customName = sessionManager.getGatewayName()
+                if (customName.isNotBlank()) {
+                    addProperty("device_name", customName)
+                }
                 add("sims", linesArray)
             }
 
@@ -125,7 +132,7 @@ class DeviceRepositoryImpl(
                 addProperty("is_internet_available", isInternetAvailable)
                 addProperty("free_memory_bytes", freeMemory)
                 addProperty("free_storage_bytes", freeStorage)
-                addProperty("app_version", "1.0.11")
+                addProperty("app_version", com.hwnix.smsagent.BuildConfig.VERSION_NAME)
                 addProperty("configuration_version", sessionManager.getConfigVersion())
             }
 
