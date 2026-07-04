@@ -123,25 +123,17 @@ android {
                     }
                 }
 
-                // 2. تحديث دالة checkAppUpdate في AgentDeviceController.php تلقائياً
-                val controllerFile = file("../../hwmix-bill-api/Modules/SmsGateway/Http/Controllers/Api/v1/AgentDeviceController.php")
-                if (controllerFile.exists()) {
-                    val dollar = "$"
-                    var content = controllerFile.readText()
-                    content = content.replace(
-                        Regex("""\${"$"}versionCode = \d+;.*?// رقم إصدار الـ APK المتوفر حالياً على السيرفر"""),
-                        Regex.escapeReplacement("${dollar}versionCode = ${vCode}; // رقم إصدار الـ APK المتوفر حالياً على السيرفر")
-                    )
-                    content = content.replace(
-                        Regex("""\${"$"}versionName = "[^"]+";"""),
-                        Regex.escapeReplacement("${dollar}versionName = \"${vName}\";")
-                    )
-                    content = content.replace(
-                        Regex("""\${"$"}downloadUrl = url\('downloads/sms-agent-v[^']+\.apk'\);"""),
-                        Regex.escapeReplacement("${dollar}downloadUrl = url('downloads/${apkFileName}');")
-                    )
-                    controllerFile.writeText(content)
-                    println("✅ AgentDeviceController.php updated → v${vName} (code: ${vCode})")
+                // 2. تحديث ملف app-version.json في الباك إند تلقائياً بالمعلومات الصحيحة
+                if (backendDir.exists()) {
+                    val versionJsonFile = file("${backendDir.absolutePath}/app-version.json")
+                    val jsonContent = """
+                        {
+                            "version_code": $vCode,
+                            "version_name": "$vName"
+                        }
+                    """.trimIndent()
+                    versionJsonFile.writeText(jsonContent)
+                    println("✅ app-version.json updated → v$vName (code: $vCode)")
                 }
             }
         }
