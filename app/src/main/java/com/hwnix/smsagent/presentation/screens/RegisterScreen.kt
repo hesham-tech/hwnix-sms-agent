@@ -63,7 +63,7 @@ fun RegisterScreen(
         OutlinedTextField(
             value = state.nickname,
             onValueChange = onNicknameChange,
-            label = { Text("اسم البوابة التعريفي (اللقب)") },
+            label = { Text("اسم الشهرة / اللقب") },
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
             enabled = !state.isLoading
         )

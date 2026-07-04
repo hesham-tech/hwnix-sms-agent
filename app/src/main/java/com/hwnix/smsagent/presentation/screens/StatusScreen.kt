@@ -56,7 +56,7 @@ fun StatusScreen(
                 if (state.gatewayName.isNotBlank()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "اسم البوابة: ${state.gatewayName}",
+                        text = "اسم الجهاز: ${state.gatewayName}",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold
                     )

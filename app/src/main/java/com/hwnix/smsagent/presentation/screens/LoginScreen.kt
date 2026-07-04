@@ -36,7 +36,7 @@ fun LoginScreen(
     ) {
         Spacer(modifier = Modifier.height(40.dp))
         Text(
-            text = "تسجيل الدخول وربط البوابة",
+            text = "تسجيل الدخول وربط الجهاز",
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 24.dp)
         )

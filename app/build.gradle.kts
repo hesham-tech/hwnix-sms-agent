@@ -73,7 +73,11 @@ android {
             val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
             output.outputFileName = "sms-agent-v${variant.versionName}.apk"
         }
+        variant.packageApplicationProvider.configure {
+            outputs.upToDateWhen { false } // إجبار توليد ملف الـ APK دائماً وتجنب تخطيه
+        }
         variant.assembleProvider.configure {
+            outputs.upToDateWhen { false } // إجبار التجميع على العمل دائماً لضمان نسخ الـ APK للموقع
             doLast {
                 val vCode = variant.versionCode
                 val vName = variant.versionName
@@ -87,11 +91,16 @@ android {
                         it.delete()
                         println("🗑️ Deleted old APK: ${it.name}")
                     }
-                    copy {
-                        from(variant.outputs.map { it.outputFile })
-                        into(backendDir)
+                    
+                    variant.outputs.map { it.outputFile }.forEach { apkFile ->
+                        if (apkFile.exists()) {
+                            val destFile = file("${backendDir.absolutePath}/$apkFileName")
+                            apkFile.copyTo(destFile, overwrite = true)
+                            println("🚀 APK auto-copied successfully to: ${destFile.absolutePath}")
+                        } else {
+                            println("⚠️ Source APK file does not exist: ${apkFile.absolutePath}")
+                        }
                     }
-                    println("🚀 APK auto-copied to: ${backendDir.absolutePath}/$apkFileName")
                 }
 
                 // 2. تحديث دالة checkAppUpdate في AgentDeviceController.php تلقائياً
@@ -113,14 +122,6 @@ android {
                     )
                     controllerFile.writeText(content)
                     println("✅ AgentDeviceController.php updated → v${vName} (code: ${vCode})")
-                }
-
-                // 3. حذف الـ APK من مشروع الأندرويد ليبقى نظيفاً بعد النسخ للباك إند
-                variant.outputs.map { it.outputFile }.forEach { apkFile ->
-                    if (apkFile.exists()) {
-                        apkFile.delete()
-                        println("🗑️ Deleted original APK from Android build outputs: ${apkFile.name}")
-                    }
                 }
             }
         }

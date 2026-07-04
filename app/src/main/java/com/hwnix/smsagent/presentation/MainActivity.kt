@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // فحص الصلاحيات عند البدء
+                    // فحص الصلاحيات والتحقق من التحديثات عند البدء
                     LaunchedEffect(Unit) {
                         permissionLauncher.launch(
                             arrayOf(
@@ -109,6 +109,20 @@ class MainActivity : ComponentActivity() {
                         delay(800)
                         isStarting = false
                         statusViewModel.checkBatteryOptimization()
+
+                        // التحقق من وجود تحديث جديد عند فتح التطبيق
+                        try {
+                            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                            val currentVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                packageInfo.longVersionCode.toInt()
+                            } else {
+                                @Suppress("DEPRECATION")
+                                packageInfo.versionCode
+                            }
+                            statusViewModel.checkForUpdate(currentVersionCode)
+                        } catch (e: Exception) {
+                            Log.e("MainActivity", "Failed to check update on start: ${e.message}")
+                        }
                     }
 
                     // متابعة نجاح تسجيل الدخول / إنشاء الحساب
