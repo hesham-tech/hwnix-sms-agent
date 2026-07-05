@@ -29,6 +29,7 @@ class SessionManager(context: Context) {
         private const val KEY_MAX_RETRY = "max_retry"
         private const val KEY_SETUP_COMPLETE = "setup_complete"
         private const val KEY_GATEWAY_NAME = "gateway_name"
+        private const val KEY_LAST_SYNC_SUCCESS = "last_sync_success"
 
         
         private const val DEFAULT_BASE_URL = "https://api-teste.hwnix.com/api/" // الافتراضي للمحاكي المحلي
@@ -156,6 +157,15 @@ class SessionManager(context: Context) {
             .remove(KEY_DEVICE_ID)
             .remove(KEY_CONFIG_VERSION)
             .remove(KEY_SETUP_COMPLETE)
+            .remove(KEY_LAST_SYNC_SUCCESS)
             .apply()
+    }
+
+    fun getLastSyncSuccessTime(): Long {
+        return sharedPreferences.getLong(KEY_LAST_SYNC_SUCCESS, 0L)
+    }
+
+    fun saveLastSyncSuccessTime(time: Long) {
+        sharedPreferences.edit().putLong(KEY_LAST_SYNC_SUCCESS, time).apply()
     }
 }

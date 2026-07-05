@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import com.hwnix.smsagent.data.local.AppDatabase
 import com.hwnix.smsagent.data.local.SessionManager
+import com.hwnix.smsagent.data.local.SyncEngine
 import com.hwnix.smsagent.data.remote.ApiClient
 import com.hwnix.smsagent.data.remote.ApiService
 import com.hwnix.smsagent.data.repository.AuthRepositoryImpl
@@ -33,10 +34,24 @@ object ServiceLocator {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            // ترحيل الإعدادات المشتركة
-            deviceProtectedContext.moveSharedPreferencesFrom(context, "hwnix_sms_agent_prefs")
-            // ترحيل قاعدة بيانات Room المحلية
-            deviceProtectedContext.moveDatabaseFrom(context, "hwnix_sms_local.db")
+            // ترحيل الإعدادات المشتركة وقاعدة البيانات فقط إذا كانت موجودة في المجلد القديم وغير مرحلة
+            try {
+                val sharedPrefsFile = java.io.File(context.filesDir?.parentFile, "shared_prefs/hwnix_sms_agent_prefs.xml")
+                if (sharedPrefsFile.exists()) {
+                    deviceProtectedContext.moveSharedPreferencesFrom(context, "hwnix_sms_agent_prefs")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ServiceLocator", "Error migrating shared preferences: ${e.message}")
+            }
+
+            try {
+                val dbFile = context.getDatabasePath("hwnix_sms_local.db")
+                if (dbFile != null && dbFile.exists()) {
+                    deviceProtectedContext.moveDatabaseFrom(context, "hwnix_sms_local.db")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ServiceLocator", "Error migrating database: ${e.message}")
+            }
         }
 
         appContext = deviceProtectedContext
@@ -45,6 +60,10 @@ object ServiceLocator {
 
     val sessionManager: SessionManager by lazy {
         SessionManager(appContext)
+    }
+
+    val syncEngine: SyncEngine by lazy {
+        SyncEngine(appContext)
     }
 
     val database: AppDatabase by lazy {

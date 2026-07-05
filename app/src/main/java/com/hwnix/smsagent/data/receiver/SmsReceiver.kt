@@ -43,7 +43,7 @@ class SmsReceiver : BroadcastReceiver() {
                         if (isUnlocked) {
                             try {
                                 val smsDao = com.hwnix.smsagent.core.di.ServiceLocator.database.smsDao()
-                                val syncEngine = SyncEngine(com.hwnix.smsagent.core.di.ServiceLocator.appContext)
+                                val syncEngine = com.hwnix.smsagent.core.di.ServiceLocator.syncEngine
 
                                 val smsEntity = SmsEntity(
                                     phoneNumber = sender,

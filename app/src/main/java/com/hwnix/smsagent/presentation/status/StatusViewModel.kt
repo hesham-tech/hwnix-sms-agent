@@ -80,8 +80,20 @@ class StatusViewModel(
             if (id == -1L) "غير مسجل" else id.toString()
         }
         val isFirstSetupVal = !sessionManager.isSetupComplete()
+        
+        val lastSyncTime = sessionManager.getLastSyncSuccessTime()
+        val isOnline = lastSyncTime > 0L && (System.currentTimeMillis() - lastSyncTime < 180000)
+        val connStatus = if (sessionManager.getAuthToken() == null) {
+            "غير متصل"
+        } else if (isOnline) {
+            "Online"
+        } else {
+            "Offline"
+        }
+
         _uiState.update {
             it.copy(
+                connectionStatus = connStatus,
                 deviceId = deviceIdVal,
                 deviceUuid = sessionManager.getDeviceUuid(),
                 configVersion = sessionManager.getConfigVersion().toString(),

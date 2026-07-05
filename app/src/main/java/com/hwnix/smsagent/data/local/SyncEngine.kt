@@ -43,7 +43,11 @@ class SyncEngine(private val context: Context) {
             runWithBackoff { pullAndProcessCommands() }
             
             // 3. إرسال نبضة قلب لتحديث التواجد وسحب الإعدادات
-            runWithBackoff { sendHeartbeat() }
+            val heartbeatSuccess = runWithBackoff { sendHeartbeat() } ?: false
+            
+            if (heartbeatSuccess) {
+                sessionManager.saveLastSyncSuccessTime(System.currentTimeMillis())
+            }
         }
     }
 

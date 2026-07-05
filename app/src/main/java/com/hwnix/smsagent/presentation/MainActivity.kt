@@ -47,8 +47,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        sessionManager = SessionManager(applicationContext)
-        syncEngine = SyncEngine(applicationContext)
+        sessionManager = com.hwnix.smsagent.core.di.ServiceLocator.sessionManager
+        syncEngine = com.hwnix.smsagent.core.di.ServiceLocator.syncEngine
 
         // تشغيل الخدمة الخلفية المستمرة لإرسال واستقبال الرسائل
         val serviceIntent = Intent(this, AgentForegroundService::class.java)
@@ -210,9 +210,6 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onBatteryOptimizeClick = {
                                         statusViewModel.disableBatteryOptimization()
-                                    },
-                                    onAutostartClick = {
-                                        statusViewModel.disableAutostartRestriction()
                                     }
                                 )
                                 IconButton(

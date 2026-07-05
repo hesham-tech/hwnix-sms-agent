@@ -170,34 +170,29 @@ class UpdateManager(private val context: Context) {
                 return
             }
 
-            // ترحيل الملف للمجلد المؤقت الداخلي (cacheDir) لضمان موثوقية الوصول التام لهواتف أندرويد 9 وأقل
-            val cacheApkFile = if (apkFile.parentFile?.absolutePath != context.cacheDir.absolutePath) {
-                val target = File(context.cacheDir, apkFile.name)
-                apkFile.copyTo(target, overwrite = true)
-                target
-            } else {
-                apkFile
-            }
-
             val authority = "${context.packageName}.fileprovider"
-            val apkUri = FileProvider.getUriForFile(context, authority, cacheApkFile)
+            val apkUri = FileProvider.getUriForFile(context, authority, apkFile)
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(apkUri, "application/vnd.android.package-archive")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
             }
 
-            // منح صلاحية القراءة صراحة لجميع الحزم المتنصتة على هذا الحدث (لحل مشكلة فشل التثبيت أول مرة على أندرويد 9 وما دونه)
-            val resInfoList = context.packageManager.queryIntentActivities(
-                intent,
-                android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
-            )
-            for (resolveInfo in resInfoList) {
-                val packageName = resolveInfo.activityInfo.packageName
-                context.grantUriPermission(
-                    packageName,
-                    apkUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+            // منح صلاحية القراءة صراحة لجميع الحزم المتنصتة على هذا الحدث
+            try {
+                val resInfoList = context.packageManager.queryIntentActivities(
+                    intent,
+                    android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
                 )
+                for (resolveInfo in resInfoList) {
+                    val packageName = resolveInfo.activityInfo.packageName
+                    context.grantUriPermission(
+                        packageName,
+                        apkUri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
+            } catch (ex: Exception) {
+                Log.e(TAG, "Error granting URI permission: ${ex.message}")
             }
 
             context.startActivity(intent)

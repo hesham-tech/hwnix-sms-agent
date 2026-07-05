@@ -47,7 +47,7 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
         GlobalScope.launch(Dispatchers.IO) {
             try {
                 val apiService = ApiClient.getService(context)
-                val sessionManager = SessionManager(context)
+                val sessionManager = com.hwnix.smsagent.core.di.ServiceLocator.sessionManager
                 val errorMsg = if (status == "failed") {
                     getSmsErrorString(resultCode)
                 } else null
@@ -88,7 +88,7 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
         GlobalScope.launch(Dispatchers.IO) {
             try {
                 val apiService = ApiClient.getService(context)
-                val sessionManager = SessionManager(context)
+                val sessionManager = com.hwnix.smsagent.core.di.ServiceLocator.sessionManager
                 val payload = JsonObject().apply {
                     addProperty("device_id", sessionManager.getDeviceId())
                     addProperty("message_id", messageId)
