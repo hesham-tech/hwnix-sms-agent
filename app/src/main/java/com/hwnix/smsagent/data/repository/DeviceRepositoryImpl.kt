@@ -112,6 +112,18 @@ class DeviceRepositoryImpl(
                 if (body.get("status")?.asBoolean == true) {
                     return Result.success(Unit)
                 }
+            } else if (response.code() == 422 || response.code() == 404) {
+                Log.w(TAG, "syncLines: Device not found or invalid on server. Re-registering...")
+                val regResult = registerDevice()
+                if (regResult.isSuccess) {
+                    val newPayload = payload.apply {
+                        addProperty("device_id", regResult.getOrThrow())
+                    }
+                    val retryResp = apiService.syncLines(UUID.randomUUID().toString(), newPayload)
+                    if (retryResp.isSuccessful) {
+                        return Result.success(Unit)
+                    }
+                }
             }
             Result.failure(Exception(parseErrorMessage(response.errorBody()?.string())))
         } catch (e: Exception) {

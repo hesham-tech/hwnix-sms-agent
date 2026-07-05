@@ -31,10 +31,19 @@ class SyncEngine(private val context: Context) {
      * تشغيل المزامنة الشاملة (الرسائل المعلقة والأوامر والنبضات) بشكل خيطي آمن.
      */
     suspend fun performFullSync() {
-        if (!hasActiveSession()) return
+        if (sessionManager.getAuthToken() == null) return
         
         syncMutex.withLock {
             Log.i(TAG, "Starting full sync cycle...")
+            
+            // التأكد من تسجيل الجهاز على السيرفر أولاً
+            if (sessionManager.getDeviceId() == -1L) {
+                val registered = registerDeviceSync()
+                if (!registered) {
+                    Log.e(TAG, "Sync aborted: Device not registered on server.")
+                    return
+                }
+            }
             
             // 1. رفع الرسائل الواردة المتراكمة محلياً
             runWithBackoff { uploadPendingIncomingSms() }
@@ -52,7 +61,7 @@ class SyncEngine(private val context: Context) {
     }
 
     private fun hasActiveSession(): Boolean {
-        return sessionManager.getAuthToken() != null && sessionManager.getDeviceId() != -1L
+        return sessionManager.getAuthToken() != null
     }
 
     /**
@@ -197,6 +206,10 @@ class SyncEngine(private val context: Context) {
                     }
                     return@withContext true
                 }
+            } else {
+                if (handleDeviceVerification(response.code())) {
+                    return@withContext sendHeartbeat()
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Heartbeat failed: ${e.message}")
@@ -268,6 +281,9 @@ class SyncEngine(private val context: Context) {
                     return@withContext true
                 }
             } else {
+                if (handleDeviceVerification(response.code())) {
+                    return@withContext uploadPendingIncomingSms()
+                }
                 val errorBody = response.errorBody()?.string()
                 Log.e(TAG, "batchSync failed - code: ${response.code()}, error: $errorBody")
             }
@@ -306,6 +322,10 @@ class SyncEngine(private val context: Context) {
                         }
                     }
                     return@withContext true
+                }
+            } else {
+                if (handleDeviceVerification(response.code())) {
+                    return@withContext pullAndProcessCommands()
                 }
             }
         } catch (e: Exception) {
@@ -423,5 +443,53 @@ class SyncEngine(private val context: Context) {
             }
         }
         return null
+    }
+
+    private suspend fun registerDeviceSync(): Boolean {
+        return try {
+            val customName = sessionManager.getGatewayName()
+            val devName = if (customName.isNotBlank()) customName else Build.MODEL
+
+            val hardwareId = android.provider.Settings.Secure.getString(
+                context.contentResolver,
+                android.provider.Settings.Secure.ANDROID_ID
+            ) ?: sessionManager.getDeviceUuid()
+
+            val payload = JsonObject().apply {
+                addProperty("android_id", hardwareId)
+                addProperty("uuid", sessionManager.getDeviceUuid())
+                addProperty("device_name", devName)
+                addProperty("brand", Build.BRAND)
+                addProperty("model", Build.MODEL)
+                addProperty("android_version", Build.VERSION.RELEASE)
+                addProperty("app_version", com.hwnix.smsagent.BuildConfig.VERSION_NAME)
+            }
+
+            val key = UUID.randomUUID().toString()
+            val response = apiService.registerDevice(key, payload)
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                if (body.get("status")?.asBoolean == true) {
+                    val data = body.getAsJsonObject("data")
+                    val deviceId = data.get("device_id").asLong
+                    sessionManager.saveDeviceId(deviceId)
+                    Log.i(TAG, "Device auto-re-registered successfully. New ID: $deviceId")
+                    return true
+                }
+            }
+            false
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to auto-re-register device: ${e.message}")
+            false
+        }
+    }
+
+    private suspend fun handleDeviceVerification(responseCode: Int): Boolean {
+        if (responseCode == 422 || responseCode == 404) {
+            Log.w(TAG, "Device ID not found or invalid on server. Re-registering...")
+            sessionManager.saveDeviceId(-1L)
+            return registerDeviceSync()
+        }
+        return false
     }
 }
