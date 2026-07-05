@@ -129,7 +129,11 @@ class SessionManager(context: Context) {
     }
 
     fun getGatewayName(): String {
-        return sharedPreferences.getString(KEY_GATEWAY_NAME, "") ?: ""
+        val name = sharedPreferences.getString(KEY_GATEWAY_NAME, "")
+        if (name.isNullOrBlank()) {
+            return android.os.Build.MODEL
+        }
+        return name
     }
 
     fun saveGatewayName(name: String) {
