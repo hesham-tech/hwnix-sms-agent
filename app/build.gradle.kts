@@ -12,10 +12,10 @@ android {
 
     defaultConfig {
         applicationId = "com.hwnix.smsagent"
-        minSdk = 21
+        minSdk = 26
         targetSdk = 34
-        versionCode = 11
-        versionName = "1.0.11"
+        versionCode = 12
+        versionName = "1.0.12"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -31,6 +31,8 @@ android {
             keyPassword = "hwnix1234"
             enableV1Signing = true
             enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
         }
     }
 
@@ -67,6 +69,9 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 
