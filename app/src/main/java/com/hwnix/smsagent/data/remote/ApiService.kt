@@ -45,6 +45,9 @@ interface ApiService {
     @GET("v1/agent/device/lines")
     suspend fun getDeviceLines(@Query("device_id") deviceId: Long): Response<JsonObject>
 
+    @POST("v1/agent/device/decouple")
+    suspend fun decoupleDevice(@Body body: JsonObject): Response<JsonObject>
+
     @GET("v1/agent/commands/pending")
     suspend fun getPendingCommands(@Query("device_id") deviceId: Long): Response<JsonObject>
 

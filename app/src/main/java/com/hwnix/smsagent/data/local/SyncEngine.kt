@@ -1,7 +1,9 @@
 package com.hwnix.smsagent.data.local
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
+import com.hwnix.smsagent.data.service.AgentForegroundService
 import android.telephony.SmsManager
 import android.util.Log
 import com.google.gson.JsonArray
@@ -485,6 +487,15 @@ class SyncEngine(private val context: Context) {
     }
 
     private suspend fun handleDeviceVerification(responseCode: Int): Boolean {
+        if (responseCode == 403) {
+            Log.e(TAG, "Device explicitly decoupled by user from admin panel. Logging out...")
+            sessionManager.clearSession()
+            try {
+                val serviceIntent = Intent(context, AgentForegroundService::class.java)
+                context.stopService(serviceIntent)
+            } catch (e: Exception) { /* ignore */ }
+            return false
+        }
         if (responseCode == 422 || responseCode == 404) {
             Log.w(TAG, "Device ID not found or invalid on server. Re-registering...")
             sessionManager.saveDeviceId(-1L)

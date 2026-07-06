@@ -241,6 +241,23 @@ class DeviceRepositoryImpl(
         }
     }
 
+    override suspend fun decoupleDevice(deviceId: Long): Result<Unit> {
+        return try {
+            val payload = JsonObject().apply {
+                addProperty("device_id", deviceId)
+            }
+            val response = apiService.decoupleDevice(payload)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(parseErrorMessage(response.errorBody()?.string())))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "decoupleDevice failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
     private fun parseErrorMessage(errorBody: String?): String {
         if (!errorBody.isNullOrEmpty()) {
             try {

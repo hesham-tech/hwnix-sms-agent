@@ -42,26 +42,8 @@ import kotlinx.coroutines.launch
 // الكلاس الأساسي للتطبيق - يحتوي فقط على تهيئة المكونات وتوجيه دورة حياة Compose
 class MainActivity : ComponentActivity() {
 
-    private lateinit var sessionManager: SessionManager
-    private lateinit var syncEngine: SyncEngine
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        sessionManager = com.hwnix.smsagent.core.di.ServiceLocator.sessionManager
-        syncEngine = com.hwnix.smsagent.core.di.ServiceLocator.syncEngine
-
-        // تشغيل الخدمة الخلفية المستمرة لإرسال واستقبال الرسائل
-        val serviceIntent = Intent(this, AgentForegroundService::class.java)
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(serviceIntent)
-            } else {
-                startService(serviceIntent)
-            }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Failed to start foreground service: ${e.message}", e)
-        }
-
 
         setContent {
             MaterialTheme {
@@ -69,16 +51,8 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val factory = remember { ViewModelFactory() }
-                    val loginViewModel: LoginViewModel = ViewModelProvider(this, factory)[LoginViewModel::class.java]
-                    val registerViewModel: RegisterViewModel = ViewModelProvider(this, factory)[RegisterViewModel::class.java]
-                    val statusViewModel: StatusViewModel = ViewModelProvider(this, factory)[StatusViewModel::class.java]
-
-                    val loginState by loginViewModel.uiState.collectAsState()
-                    val registerState by registerViewModel.uiState.collectAsState()
-                    val statusState by statusViewModel.uiState.collectAsState()
-
-                    var isLoggedIn by remember { mutableStateOf(sessionManager.getAuthToken() != null) }
+                    var isSessionReady by remember { mutableStateOf(false) }
+                    var isLoggedIn by remember { mutableStateOf(false) }
                     var isRegistering by remember { mutableStateOf(false) }
                     var isStarting by remember { mutableStateOf(true) }
 
@@ -95,8 +69,30 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // فحص الصلاحيات والتحقق من التحديثات عند البدء
+                    // 1. تهيئة الكائنات الثقيلة في الخلفية لتفادي الشاشة البيضاء عند النقر على الأيقونة
                     LaunchedEffect(Unit) {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            com.hwnix.smsagent.core.di.ServiceLocator.sessionManager
+                            com.hwnix.smsagent.core.di.ServiceLocator.syncEngine
+                        }
+                        
+                        val sessionManager = com.hwnix.smsagent.core.di.ServiceLocator.sessionManager
+                        isLoggedIn = sessionManager.getAuthToken() != null
+                        isSessionReady = true
+
+                        // تشغيل الخدمة الخلفية المستمرة بعد تهيئة الجلسة
+                        val serviceIntent = Intent(context, AgentForegroundService::class.java)
+                        try {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                context.startForegroundService(serviceIntent)
+                            } else {
+                                context.startService(serviceIntent)
+                            }
+                        } catch (e: Exception) {
+                            Log.e("MainActivity", "Failed to start foreground service: ${e.message}", e)
+                        }
+
+                        // طلب الصلاحيات
                         permissionLauncher.launch(
                             arrayOf(
                                 android.Manifest.permission.RECEIVE_SMS,
@@ -106,39 +102,100 @@ class MainActivity : ComponentActivity() {
                                 android.Manifest.permission.POST_NOTIFICATIONS
                             )
                         )
-                        delay(800)
+                        delay(600)
                         isStarting = false
-                        statusViewModel.checkBatteryOptimization()
+                    }
 
-                        // التحقق من وجود تحديث جديد عند فتح التطبيق
-                        try {
-                            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-                            val currentVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                                packageInfo.longVersionCode.toInt()
-                            } else {
-                                @Suppress("DEPRECATION")
-                                packageInfo.versionCode
+                    if (!isSessionReady) {
+                        // شاشة ترحيبية / تهيئة سريعة لحين تحميل الكود بأمان بالخلفية
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                CircularProgressIndicator()
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "جاري تهيئة النظام الآمن...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
                             }
-                            statusViewModel.checkForUpdate(currentVersionCode)
-                        } catch (e: Exception) {
-                            Log.e("MainActivity", "Failed to check update on start: ${e.message}")
                         }
-                    }
+                    } else {
+                        val sessionManager = com.hwnix.smsagent.core.di.ServiceLocator.sessionManager
+                        val syncEngine = com.hwnix.smsagent.core.di.ServiceLocator.syncEngine
+                        
+                        val factory = remember { ViewModelFactory() }
+                        val loginViewModel: LoginViewModel = ViewModelProvider(this@MainActivity, factory)[LoginViewModel::class.java]
+                        val registerViewModel: RegisterViewModel = ViewModelProvider(this@MainActivity, factory)[RegisterViewModel::class.java]
+                        val statusViewModel: StatusViewModel = ViewModelProvider(this@MainActivity, factory)[StatusViewModel::class.java]
 
-                    // متابعة نجاح تسجيل الدخول / إنشاء الحساب
-                    LaunchedEffect(loginState.isSuccess) {
-                        if (loginState.isSuccess) {
-                            isLoggedIn = true
-                            statusViewModel.refreshDeviceInfo()
-                        }
-                    }
+                        val loginState by loginViewModel.uiState.collectAsState()
+                        val registerState by registerViewModel.uiState.collectAsState()
+                        val statusState by statusViewModel.uiState.collectAsState()
 
-                    LaunchedEffect(registerState.isSuccess) {
-                        if (registerState.isSuccess) {
-                            isLoggedIn = true
-                            statusViewModel.refreshDeviceInfo()
+                        // فحص حالة تحسين البطارية والتحديثات تلقائياً
+                        LaunchedEffect(isStarting) {
+                            if (!isStarting) {
+                                statusViewModel.checkBatteryOptimization()
+                                
+                                // طلب استثناء تحسين استهلاك البطارية تلقائياً فوراً إذا كان مقيداً
+                                if (statusViewModel.uiState.value.isBatteryOptimized) {
+                                    statusViewModel.disableBatteryOptimization()
+                                }
+
+                                // التحقق من وجود تحديث جديد عند فتح التطبيق
+                                try {
+                                    val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                                    val currentVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                        packageInfo.longVersionCode.toInt()
+                                    } else {
+                                        @Suppress("DEPRECATION")
+                                        packageInfo.versionCode
+                                    }
+                                    statusViewModel.checkForUpdate(currentVersionCode)
+                                } catch (e: Exception) {
+                                    Log.e("MainActivity", "Failed to check update on start: ${e.message}")
+                                }
+                            }
                         }
-                    }
+
+                        // مزامنة تلقائية عند عودة التطبيق للواجهة (onResume)
+                        val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+                        DisposableEffect(lifecycleOwner, isLoggedIn) {
+                            val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                                if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                                    if (isLoggedIn) {
+                                        statusViewModel.performFullSync(syncEngine)
+                                    }
+                                }
+                            }
+                            lifecycleOwner.lifecycle.addObserver(observer)
+                            onDispose {
+                                lifecycleOwner.lifecycle.removeObserver(observer)
+                            }
+                        }
+
+                        // متابعة نجاح تسجيل الدخول / إنشاء الحساب
+                        LaunchedEffect(loginState.isSuccess) {
+                            if (loginState.isSuccess) {
+                                isLoggedIn = true
+                                statusViewModel.refreshDeviceInfo()
+                                statusViewModel.performFullSync(syncEngine)
+                            }
+                        }
+
+                        LaunchedEffect(registerState.isSuccess) {
+                            if (registerState.isSuccess) {
+                                isLoggedIn = true
+                                statusViewModel.refreshDeviceInfo()
+                                statusViewModel.performFullSync(syncEngine)
+                            }
+                        }
 
                     if (isStarting) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -291,4 +348,5 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
 }

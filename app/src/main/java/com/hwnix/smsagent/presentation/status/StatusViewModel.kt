@@ -316,6 +316,14 @@ class StatusViewModel(
 
     fun logout(onLogoutSuccess: () -> Unit) {
         viewModelScope.launch {
+            val deviceId = sessionManager.getDeviceId()
+            if (deviceId != -1L) {
+                try {
+                    deviceRepository.decoupleDevice(deviceId)
+                } catch (e: Exception) {
+                    // تجاهل الأخطاء لضمان تسجيل الخروج المحلي في حال انقطاع الشبكة
+                }
+            }
             sessionManager.clearSession()
             onLogoutSuccess()
         }

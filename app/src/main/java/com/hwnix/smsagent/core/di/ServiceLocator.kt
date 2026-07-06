@@ -21,6 +21,8 @@ import com.hwnix.smsagent.manager.battery.BatteryManager
 import com.hwnix.smsagent.manager.sim.SimManager
 import com.hwnix.smsagent.manager.update.UpdateManager
 
+import kotlinx.coroutines.launch
+
 // محدد الخدمات لتوفير وحقن الاعتمادات يدوياً بشكل آمن وتجنب تكرار التهيئة
 object ServiceLocator {
 
@@ -33,28 +35,30 @@ object ServiceLocator {
             context
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            // ترحيل الإعدادات المشتركة وقاعدة البيانات فقط إذا كانت موجودة في المجلد القديم وغير مرحلة
-            try {
-                val sharedPrefsFile = java.io.File(context.filesDir?.parentFile, "shared_prefs/hwnix_sms_agent_prefs.xml")
-                if (sharedPrefsFile.exists()) {
-                    deviceProtectedContext.moveSharedPreferencesFrom(context, "hwnix_sms_agent_prefs")
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("ServiceLocator", "Error migrating shared preferences: ${e.message}")
-            }
+        appContext = deviceProtectedContext
 
-            try {
-                val dbFile = context.getDatabasePath("hwnix_sms_local.db")
-                if (dbFile != null && dbFile.exists()) {
-                    deviceProtectedContext.moveDatabaseFrom(context, "hwnix_sms_local.db")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            // تشغيل الترحيل في الخلفية لتفادي أي حظر أو تأخير عند النقر على الأيقونة
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                try {
+                    val sharedPrefsFile = java.io.File(context.filesDir?.parentFile, "shared_prefs/hwnix_sms_agent_prefs.xml")
+                    if (sharedPrefsFile.exists()) {
+                        deviceProtectedContext.moveSharedPreferencesFrom(context, "hwnix_sms_agent_prefs")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ServiceLocator", "Error migrating shared preferences: ${e.message}")
                 }
-            } catch (e: Exception) {
-                android.util.Log.e("ServiceLocator", "Error migrating database: ${e.message}")
+
+                try {
+                    val dbFile = context.getDatabasePath("hwnix_sms_local.db")
+                    if (dbFile != null && dbFile.exists()) {
+                        deviceProtectedContext.moveDatabaseFrom(context, "hwnix_sms_local.db")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ServiceLocator", "Error migrating database: ${e.message}")
+                }
             }
         }
-
-        appContext = deviceProtectedContext
     }
 
 
