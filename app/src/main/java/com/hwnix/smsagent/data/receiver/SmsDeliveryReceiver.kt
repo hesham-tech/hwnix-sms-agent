@@ -23,8 +23,16 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        val action = intent.action
         val commandId = intent.getLongExtra("command_id", -1L)
         val messageId = intent.getLongExtra("message_id", -1L)
+
+        android.widget.Toast.makeText(
+            context,
+            "📩 Receiver Action: $action\ncmd: $commandId, msg: $messageId",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
+
         if (commandId == -1L || messageId == -1L) return
 
         when (intent.action) {
