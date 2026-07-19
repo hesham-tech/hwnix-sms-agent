@@ -48,10 +48,15 @@ class DeviceRepositoryImpl(
             val devName = if (customName.isNotBlank()) customName else Build.MODEL
 
             val context = com.hwnix.smsagent.core.di.ServiceLocator.appContext
-            val hardwareId = android.provider.Settings.Secure.getString(
+            val rawId = android.provider.Settings.Secure.getString(
                 context.contentResolver,
                 android.provider.Settings.Secure.ANDROID_ID
-            ) ?: sessionManager.getDeviceUuid()
+            )
+            val hardwareId = if (rawId.isNullOrBlank() || rawId == "9774d56d682e549c") {
+                sessionManager.getDeviceUuid()
+            } else {
+                rawId
+            }
 
             val payload = JsonObject().apply {
                 addProperty("android_id", hardwareId)
