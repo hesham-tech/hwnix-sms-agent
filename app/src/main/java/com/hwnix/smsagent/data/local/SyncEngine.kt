@@ -19,10 +19,10 @@ import java.util.UUID
 
 class SyncEngine(private val context: Context) {
 
-    private val sessionManager = SessionManager(context)
-    private val database = AppDatabase.getDatabase(context)
-    private val smsDao = database.smsDao()
-    private val apiService = ApiClient.getService(context)
+    private val sessionManager by lazy { com.hwnix.smsagent.core.di.ServiceLocator.sessionManager }
+    private val database by lazy { com.hwnix.smsagent.core.di.ServiceLocator.database }
+    private val smsDao by lazy { database.smsDao() }
+    private val apiService by lazy { com.hwnix.smsagent.core.di.ServiceLocator.apiService }
     private val syncMutex = Mutex()
 
     companion object {

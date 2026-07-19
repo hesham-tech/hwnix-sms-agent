@@ -102,7 +102,7 @@ class MainActivity : ComponentActivity() {
                                 android.Manifest.permission.POST_NOTIFICATIONS
                             )
                         )
-                        delay(600)
+                        delay(200)
                         isStarting = false
                     }
 

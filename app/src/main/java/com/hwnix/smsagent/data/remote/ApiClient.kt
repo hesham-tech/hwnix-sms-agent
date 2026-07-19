@@ -14,7 +14,7 @@ object ApiClient {
 
     fun getService(context: Context): ApiService {
         return apiService ?: synchronized(this) {
-            val sessionManager = SessionManager(context)
+            val sessionManager = com.hwnix.smsagent.core.di.ServiceLocator.sessionManager
             
             // تسجيل تفاصيل الطلبات (Logging)
             val loggingInterceptor = HttpLoggingInterceptor().apply {
