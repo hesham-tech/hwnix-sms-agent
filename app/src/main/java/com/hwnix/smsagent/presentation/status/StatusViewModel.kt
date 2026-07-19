@@ -265,9 +265,7 @@ class StatusViewModel(
     }
 
     fun dismissSimDialog() {
-        if (!_uiState.value.isFirstSetup) {
-            _uiState.update { it.copy(showSimDialog = false) }
-        }
+        _uiState.update { it.copy(showSimDialog = false) }
     }
 
     fun saveSimSetup() {

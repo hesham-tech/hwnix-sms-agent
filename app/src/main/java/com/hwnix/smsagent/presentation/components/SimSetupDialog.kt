@@ -27,7 +27,7 @@ fun SimSetupDialog(
     onDismiss: () -> Unit
 ) {
     AlertDialog(
-        onDismissRequest = { if (!isSaving && !isFirstSetup) onDismiss() },
+        onDismissRequest = { if (!isSaving) onDismiss() },
         properties = DialogProperties(decorFitsSystemWindows = false),
         title = { Text(if (isFirstSetup) "إعداد الجهاز (مطلوب)" else "إعدادات الجهاز والأرقام") },
         text = {
@@ -112,10 +112,8 @@ fun SimSetupDialog(
             }
         },
         dismissButton = {
-            if (!isFirstSetup) {
-                TextButton(onClick = onDismiss, enabled = !isSaving) {
-                    Text("إغلاق")
-                }
+            TextButton(onClick = onDismiss, enabled = !isSaving) {
+                Text("إغلاق")
             }
         }
     )
