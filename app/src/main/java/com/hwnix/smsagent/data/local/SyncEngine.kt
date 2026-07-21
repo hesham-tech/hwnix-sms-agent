@@ -308,13 +308,16 @@ class SyncEngine(private val context: Context) {
                 val body = response.body()!!
                 if (body.get("status")?.asBoolean == true) {
                     val commands = body.getAsJsonArray("data")
+                    val cmdIds = commands.map { it.asJsonObject.get("id").asLong }
+                    Log.i(TAG, "TRACE 1: Poll response received at ${System.currentTimeMillis()}, count=${commands.size()}, ids=$cmdIds")
+
                     commands.forEach { element ->
                         val cmdObj = element.asJsonObject
                         val commandId = cmdObj.get("id").asLong
                         val type = cmdObj.get("command_type").asString
                         val payload = cmdObj.getAsJsonObject("payload")
 
-                        Log.i(TAG, "Processing command #$commandId of type: $type")
+                        Log.i(TAG, "TRACE 2: PROCESS commandId=$commandId of type: $type")
                         
                         if (type == "SEND_SMS") {
                             executeSmsSendCommand(commandId, payload)
@@ -391,6 +394,7 @@ class SyncEngine(private val context: Context) {
             )
 
             // إرسال الرسالة مع الـ intents
+            Log.i(TAG, "TRACE 3: SENDING SMS commandId=$commandId, phone=$phoneNumber at ${System.currentTimeMillis()}")
             smsManager.sendTextMessage(phoneNumber, null, messageBody, sentIntent, deliveryIntent)
             Log.i(TAG, "SMS queued to: $phoneNumber (raw: $rawPhone), cmd: $commandId")
 
