@@ -20,6 +20,9 @@ interface SmsDao {
     @Query("SELECT EXISTS(SELECT * FROM sms_cache WHERE messageRef = :messageRef AND direction = 'incoming')")
     suspend fun exists(messageRef: String): Boolean
 
+    @Query("SELECT EXISTS(SELECT * FROM sms_cache WHERE phoneNumber = :phone AND messageBody = :body AND sentAt = :timestamp AND direction = 'incoming')")
+    suspend fun existsIncoming(phone: String, body: String, timestamp: Long): Boolean
+
     @Query("DELETE FROM sms_cache WHERE status = 'uploaded' AND createdAt < :timestamp")
     suspend fun cleanOldLogs(timestamp: Long)
 }

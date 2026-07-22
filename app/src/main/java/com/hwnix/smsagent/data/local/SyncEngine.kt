@@ -47,7 +47,10 @@ class SyncEngine(private val context: Context) {
                 }
             }
             
-            // 1. رفع الرسائل الواردة المتراكمة محلياً
+            // 1. فحص صندوق الوارد بالنظام لمزامنة الرسائل الواردة المتراكمة (أثناء توقف التطبيق أو انقطاع الشبكة)
+            runWithBackoff { scanSystemInboxForNewMessages() }
+
+            // 2. رفع الرسائل الواردة المتراكمة محلياً
             runWithBackoff { uploadPendingIncomingSms() }
             
             // 2. سحب ومعالجة الأوامر المعلقة من السيرفر
@@ -220,6 +223,86 @@ class SyncEngine(private val context: Context) {
     }
 
     /**
+     * فحص صندوق الوارد بالنظام (System Inbox) ورفع أي رسائل واردة جديدة لم تسجل بعد.
+     * هذا يضمن عدم ضياع أي رسالة واردة في حال إيقاف التطبيق الإجباري (Force Stop) أو انقطاع الإنترنت.
+     */
+    private suspend fun scanSystemInboxForNewMessages(): Boolean = withContext(Dispatchers.IO) {
+        val lastCheckTime = sessionManager.getLastIncomingSmsCheckTime()
+        val currentTime = System.currentTimeMillis()
+        
+        // إذا كانت أول مرة، نفحص آخر ساعتين فقط لمنع رفع تاريخ الرسائل بالكامل
+        val sinceTime = if (lastCheckTime == 0L) currentTime - (2 * 3600 * 1000) else lastCheckTime
+        
+        Log.i(TAG, "Scanning system inbox for new incoming SMS since: $sinceTime")
+        sendRemoteLog("TRACE_INBOX_SCAN", "Scanning system inbox since: $sinceTime")
+        
+        try {
+            val inboxUri = android.net.Uri.parse("content://sms/inbox")
+            context.contentResolver.query(
+                inboxUri,
+                null, // استخدام null لتجنب استثناء العمود غير الصالح على الهواتف المختلفة
+                "date > ?",
+                arrayOf(sinceTime.toString()),
+                "date ASC"
+            )?.use { cursor ->
+                val addressIdx = cursor.getColumnIndex("address")
+                val bodyIdx = cursor.getColumnIndex("body")
+                val dateIdx = cursor.getColumnIndex("date")
+                val subIdIdx = cursor.getColumnIndex("sub_id")
+                val simIdIdx = cursor.getColumnIndex("sim_id")
+                
+                var foundCount = 0
+                var insertedCount = 0
+
+                if (addressIdx >= 0 && bodyIdx >= 0 && dateIdx >= 0) {
+                    while (cursor.moveToNext()) {
+                        val address = cursor.getString(addressIdx) ?: "unknown"
+                        val body = cursor.getString(bodyIdx) ?: ""
+                        val date = cursor.getLong(dateIdx)
+                        
+                        val subId = if (subIdIdx >= 0) {
+                            cursor.getString(subIdIdx) ?: "-1"
+                        } else if (simIdIdx >= 0) {
+                            cursor.getString(simIdIdx) ?: "-1"
+                        } else {
+                            "-1"
+                        }
+                        
+                        foundCount++
+
+                        // التحقق من وجود الرسالة مسبقاً بقاعدة البيانات المحلية
+                        val exists = smsDao.existsIncoming(address, body, date)
+                        if (!exists) {
+                            Log.i(TAG, "Found unsynced system SMS from: $address at $date. Inserting to cache...")
+                            sendRemoteLog("TRACE_INBOX_SCAN", "Unsynced SMS detected from: $address, date: $date", -1, -1)
+                            
+                            val smsEntity = SmsEntity(
+                                phoneNumber = address,
+                                messageBody = body,
+                                direction = "incoming",
+                                status = "pending_upload",
+                                messageRef = UUID.randomUUID().toString(),
+                                subscriptionId = subId,
+                                sentAt = date
+                            )
+                            smsDao.insert(smsEntity)
+                            insertedCount++
+                        }
+                    }
+                }
+                Log.i(TAG, "Inbox scan finished. Found: $foundCount, Unsynced: $insertedCount")
+                sendRemoteLog("TRACE_INBOX_SCAN", "Inbox scan finished. Found: $foundCount, Unsynced: $insertedCount")
+            }
+            sessionManager.saveLastIncomingSmsCheckTime(currentTime)
+            return@withContext true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to scan system inbox: ${e.message}", e)
+            sendRemoteLog("TRACE_INBOX_SCAN", "Failed to scan system inbox: ${e.message}")
+            return@withContext false
+        }
+    }
+
+    /**
      * رفع الرسائل الواردة المخزنة محلياً بنظام الدفعات والمطابقة (Batch upload).
      */
     private suspend fun uploadPendingIncomingSms(): Boolean = withContext(Dispatchers.IO) {
@@ -376,6 +459,7 @@ class SyncEngine(private val context: Context) {
                 context,
                 commandId.toInt(),
                 android.content.Intent("com.hwnix.smsagent.SMS_SENT").apply {
+                    setPackage(context.packageName)
                     putExtra("command_id", commandId)
                     putExtra("message_id", messageId)
                 },
@@ -391,6 +475,7 @@ class SyncEngine(private val context: Context) {
                 context,
                 (commandId + 10000).toInt(),
                 android.content.Intent("com.hwnix.smsagent.SMS_DELIVERED").apply {
+                    setPackage(context.packageName)
                     putExtra("command_id", commandId)
                     putExtra("message_id", messageId)
                 },

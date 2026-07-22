@@ -14,8 +14,8 @@ android {
         applicationId = "com.hwnix.smsagent"
         minSdk = 26
         targetSdk = 34
-        versionCode = 27
-        versionName = "1.0.27"
+        versionCode = 29
+        versionName = "1.0.29"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

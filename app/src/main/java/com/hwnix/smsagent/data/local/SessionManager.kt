@@ -168,4 +168,12 @@ class SessionManager(context: Context) {
     fun saveLastSyncSuccessTime(time: Long) {
         sharedPreferences.edit().putLong(KEY_LAST_SYNC_SUCCESS, time).apply()
     }
+
+    fun getLastIncomingSmsCheckTime(): Long {
+        return sharedPreferences.getLong("last_incoming_sms_check_time", 0L)
+    }
+
+    fun saveLastIncomingSmsCheckTime(time: Long) {
+        sharedPreferences.edit().putLong("last_incoming_sms_check_time", time).apply()
+    }
 }
