@@ -75,4 +75,7 @@ interface ApiService {
         @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: JsonObject
     ): Response<JsonObject>
+
+    @POST("v1/agent/device/log")
+    suspend fun logDiagnostic(@Body body: JsonObject): Response<JsonObject>
 }

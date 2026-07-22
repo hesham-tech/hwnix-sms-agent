@@ -310,6 +310,7 @@ class SyncEngine(private val context: Context) {
                     val commands = body.getAsJsonArray("data")
                     val cmdIds = commands.map { it.asJsonObject.get("id").asLong }
                     Log.i(TAG, "TRACE 1: Poll response received at ${System.currentTimeMillis()}, count=${commands.size()}, ids=$cmdIds")
+                    sendRemoteLog("TRACE 1", "Poll response received, count=${commands.size()}, ids=$cmdIds")
 
                     commands.forEach { element ->
                         val cmdObj = element.asJsonObject
@@ -318,6 +319,7 @@ class SyncEngine(private val context: Context) {
                         val payload = cmdObj.getAsJsonObject("payload")
 
                         Log.i(TAG, "TRACE 2: PROCESS commandId=$commandId of type: $type")
+                        sendRemoteLog("TRACE 2", "PROCESS commandId=$commandId of type: $type")
                         
                         if (type == "SEND_SMS") {
                             executeSmsSendCommand(commandId, payload)
@@ -369,6 +371,7 @@ class SyncEngine(private val context: Context) {
 
             // إعداد SentIntent لمعرفة نتيجة الإرسال للشبكة
             Log.i(TAG, "TRACE 1.1: BEFORE creating PendingIntent for SMS_SENT, cmd: $commandId, msg: $messageId")
+            sendRemoteLog("TRACE 1.1", "BEFORE creating PendingIntent for SMS_SENT, cmd: $commandId, msg: $messageId")
             val sentIntent = android.app.PendingIntent.getBroadcast(
                 context,
                 commandId.toInt(),
@@ -381,6 +384,7 @@ class SyncEngine(private val context: Context) {
                 else android.app.PendingIntent.FLAG_UPDATE_CURRENT
             )
             Log.i(TAG, "TRACE 1.2: AFTER creating PendingIntent for SMS_SENT, cmd: $commandId, msg: $messageId")
+            sendRemoteLog("TRACE 1.2", "AFTER creating PendingIntent for SMS_SENT, cmd: $commandId, msg: $messageId")
 
             // إعداد DeliveryIntent لمعرفة التسليم الفعلي للمستقبِل
             val deliveryIntent = android.app.PendingIntent.getBroadcast(
@@ -397,8 +401,10 @@ class SyncEngine(private val context: Context) {
 
             // إرسال الرسالة مع الـ intents
             Log.i(TAG, "TRACE 1.3: BEFORE calling sendTextMessage(), cmd: $commandId, msg: $messageId, phone: $phoneNumber")
+            sendRemoteLog("TRACE 1.3", "BEFORE calling sendTextMessage(), cmd: $commandId, msg: $messageId, phone: $phoneNumber")
             smsManager.sendTextMessage(phoneNumber, null, messageBody, sentIntent, deliveryIntent)
             Log.i(TAG, "TRACE 1.4: AFTER sendTextMessage() returned successfully (no exception), cmd: $commandId, msg: $messageId")
+            sendRemoteLog("TRACE 1.4", "AFTER sendTextMessage() returned successfully (no exception), cmd: $commandId, msg: $messageId")
 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to send SMS: ${e.message}")
@@ -513,5 +519,25 @@ class SyncEngine(private val context: Context) {
             return registerDeviceSync()
         }
         return false
+    }
+
+    private fun sendRemoteLog(tag: String, message: String, details: JsonObject? = null) {
+        val deviceId = sessionManager.getDeviceId()
+        if (deviceId == -1L) return
+        kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+            try {
+                val payload = JsonObject().apply {
+                    addProperty("device_id", deviceId)
+                    addProperty("tag", tag)
+                    addProperty("message", message)
+                    if (details != null) {
+                        add("details", details)
+                    }
+                }
+                apiService.logDiagnostic(payload)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send remote log: ${e.message}")
+            }
+        }
     }
 }
