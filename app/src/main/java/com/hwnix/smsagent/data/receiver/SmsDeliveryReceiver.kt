@@ -27,6 +27,12 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
         val commandId = intent.getLongExtra("command_id", -1L)
         val messageId = intent.getLongExtra("message_id", -1L)
 
+        val extrasString = StringBuilder()
+        intent.extras?.keySet()?.forEach { key ->
+            extrasString.append("$key=${intent.extras?.get(key)}; ")
+        }
+        Log.i(TAG, "TRACE 1.5: SmsDeliveryReceiver.onReceive() triggered. action=$action, resultCode=$resultCode, command_id=$commandId, message_id=$messageId, extras={$extrasString}")
+
         android.widget.Toast.makeText(
             context,
             "📩 Receiver Action: $action\ncmd: $commandId, msg: $messageId",
@@ -74,7 +80,20 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
                 }
 
                 val key = "CMD_EXEC_REP_${commandId}_${status}"
-                apiService.executeCommand(commandId, key, payload)
+                Log.i(TAG, "TRACE 1.6: BEFORE calling API executeCommand, commandId=$commandId, key=$key, payload=$payload")
+                
+                try {
+                    val response = apiService.executeCommand(commandId, key, payload)
+                    if (response.isSuccessful) {
+                        Log.i(TAG, "TRACE 1.7: API executeCommand succeeded. code=${response.code()}, body=${response.body()}")
+                    } else {
+                        Log.e(TAG, "TRACE 1.7: API executeCommand failed. code=${response.code()}, errorBody=${response.errorBody()?.string()}")
+                    }
+                } catch (apiEx: Exception) {
+                    Log.e(TAG, "TRACE 1.7: API executeCommand thrown exception: ${apiEx.message}", apiEx)
+                    throw apiEx
+                }
+                
                 Log.i(TAG, "Command $commandId execution status reported: $status")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to report command execution: ${e.message}")

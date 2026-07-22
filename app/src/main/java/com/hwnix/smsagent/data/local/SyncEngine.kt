@@ -368,6 +368,7 @@ class SyncEngine(private val context: Context) {
             }
 
             // إعداد SentIntent لمعرفة نتيجة الإرسال للشبكة
+            Log.i(TAG, "TRACE 1.1: BEFORE creating PendingIntent for SMS_SENT, cmd: $commandId, msg: $messageId")
             val sentIntent = android.app.PendingIntent.getBroadcast(
                 context,
                 commandId.toInt(),
@@ -379,6 +380,7 @@ class SyncEngine(private val context: Context) {
                     android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
                 else android.app.PendingIntent.FLAG_UPDATE_CURRENT
             )
+            Log.i(TAG, "TRACE 1.2: AFTER creating PendingIntent for SMS_SENT, cmd: $commandId, msg: $messageId")
 
             // إعداد DeliveryIntent لمعرفة التسليم الفعلي للمستقبِل
             val deliveryIntent = android.app.PendingIntent.getBroadcast(
@@ -394,9 +396,9 @@ class SyncEngine(private val context: Context) {
             )
 
             // إرسال الرسالة مع الـ intents
-            Log.i(TAG, "TRACE 3: SENDING SMS commandId=$commandId, phone=$phoneNumber at ${System.currentTimeMillis()}")
+            Log.i(TAG, "TRACE 1.3: BEFORE calling sendTextMessage(), cmd: $commandId, msg: $messageId, phone: $phoneNumber")
             smsManager.sendTextMessage(phoneNumber, null, messageBody, sentIntent, deliveryIntent)
-            Log.i(TAG, "SMS queued to: $phoneNumber (raw: $rawPhone), cmd: $commandId")
+            Log.i(TAG, "TRACE 1.4: AFTER sendTextMessage() returned successfully (no exception), cmd: $commandId, msg: $messageId")
 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to send SMS: ${e.message}")
