@@ -14,8 +14,8 @@ android {
         applicationId = "com.hwnix.smsagent"
         minSdk = 26
         targetSdk = 34
-        versionCode = 29
-        versionName = "1.0.29"
+        versionCode = 30
+        versionName = "1.0.30"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -29,10 +29,8 @@ android {
             storePassword = "hwnix1234"
             keyAlias = "hwnix_alias"
             keyPassword = "hwnix1234"
-            enableV1Signing = true
-            enableV2Signing = true
-            enableV3Signing = false
-            enableV4Signing = false
+            isV1SigningEnabled = true
+            isV2SigningEnabled = true
         }
     }
 
