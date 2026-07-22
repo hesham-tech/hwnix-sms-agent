@@ -32,7 +32,7 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
             extrasString.append("$key=${intent.extras?.get(key)}; ")
         }
         Log.i(TAG, "TRACE 1.5: SmsDeliveryReceiver.onReceive() triggered. action=$action, resultCode=$resultCode, command_id=$commandId, message_id=$messageId, extras={$extrasString}")
-        sendRemoteLog(context, "TRACE 1.5", "SmsDeliveryReceiver.onReceive() triggered. action=$action, resultCode=$resultCode, command_id=$commandId, message_id=$messageId, extras={$extrasString}")
+        sendRemoteLog(context, "TRACE 1.5", "SmsDeliveryReceiver.onReceive() triggered. action=$action, resultCode=$resultCode, command_id=$commandId, message_id=$messageId, extras={$extrasString}", commandId, messageId)
 
         android.widget.Toast.makeText(
             context,
@@ -82,20 +82,20 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
 
                 val key = "CMD_EXEC_REP_${commandId}_${status}"
                 Log.i(TAG, "TRACE 1.6: BEFORE calling API executeCommand, commandId=$commandId, key=$key, payload=$payload")
-                sendRemoteLog(context, "TRACE 1.6", "BEFORE calling API executeCommand, commandId=$commandId, key=$key")
+                sendRemoteLog(context, "TRACE 1.6", "BEFORE calling API executeCommand, commandId=$commandId, key=$key", commandId, messageId)
                 
                 try {
                     val response = apiService.executeCommand(commandId, key, payload)
                     if (response.isSuccessful) {
                         Log.i(TAG, "TRACE 1.7: API executeCommand succeeded. code=${response.code()}, body=${response.body()}")
-                        sendRemoteLog(context, "TRACE 1.7", "API executeCommand succeeded. code=${response.code()}, body=${response.body()}")
+                        sendRemoteLog(context, "TRACE 1.7", "API executeCommand succeeded. code=${response.code()}, body=${response.body()}", commandId, messageId)
                     } else {
                         Log.e(TAG, "TRACE 1.7: API executeCommand failed. code=${response.code()}, errorBody=${response.errorBody()?.string()}")
-                        sendRemoteLog(context, "TRACE 1.7", "API executeCommand failed. code=${response.code()}, errorBody=${response.errorBody()?.string()}")
+                        sendRemoteLog(context, "TRACE 1.7", "API executeCommand failed. code=${response.code()}, errorBody=${response.errorBody()?.string()}", commandId, messageId)
                     }
                 } catch (apiEx: Exception) {
                     Log.e(TAG, "TRACE 1.7: API executeCommand thrown exception: ${apiEx.message}", apiEx)
-                    sendRemoteLog(context, "TRACE 1.7", "API executeCommand thrown exception: ${apiEx.message}")
+                    sendRemoteLog(context, "TRACE 1.7", "API executeCommand thrown exception: ${apiEx.message}", commandId, messageId)
                     throw apiEx
                 }
                 
@@ -135,7 +135,7 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun sendRemoteLog(context: Context, tag: String, message: String) {
+    private fun sendRemoteLog(context: Context, tag: String, message: String, commandId: Long = -1L, messageId: Long = -1L) {
         val sessionManager = com.hwnix.smsagent.core.di.ServiceLocator.sessionManager
         val deviceId = sessionManager.getDeviceId()
         if (deviceId == -1L) return
@@ -146,6 +146,13 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
                     addProperty("device_id", deviceId)
                     addProperty("tag", tag)
                     addProperty("message", message)
+                    val detailsObj = JsonObject().apply {
+                        addProperty("client_timestamp", System.currentTimeMillis())
+                        addProperty("thread", Thread.currentThread().name)
+                        if (commandId != -1L) addProperty("command_id", commandId)
+                        if (messageId != -1L) addProperty("message_id", messageId)
+                    }
+                    add("details", detailsObj)
                 }
                 apiService.logDiagnostic(payload)
             } catch (e: Exception) {
