@@ -14,6 +14,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.hwnix.smsagent.data.local.SessionManager
 import com.hwnix.smsagent.data.local.SyncEngine
+import com.hwnix.smsagent.data.local.BootTracker
 import com.hwnix.smsagent.presentation.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,43 +39,56 @@ class AgentForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        syncEngine = SyncEngine(applicationContext)
-        sessionManager = SessionManager(applicationContext)
-        createNotificationChannel()
+        try {
+            syncEngine = SyncEngine(applicationContext)
+            sessionManager = SessionManager(applicationContext)
+            BootTracker.updateStage(applicationContext, "SERVICE_ON_CREATE")
+            createNotificationChannel()
 
-        // إعداد WakeLock لمنع تجميد الـ CPU أثناء دورة الـ polling
-        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = pm.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK,
-            "HWNix:AgentWakeLock"
-        ).apply { setReferenceCounted(false) }
+            // إعداد WakeLock لمنع تجميد الـ CPU أثناء دورة الـ polling
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = pm.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "HWNix:AgentWakeLock"
+            ).apply { setReferenceCounted(false) }
 
-        // تشغيل startForeground فوراً في onCreate لمنع أي كراش أو تأخر (خلال الـ 5 ثواني المطلوبة من نظام أندرويد)
-        val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
+            // تشغيل startForeground فوراً في onCreate لمنع أي كراش أو تأخر (خلال الـ 5 ثواني المطلوبة من نظام أندرويد)
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+
+            val notificationIntent = Intent(this, MainActivity::class.java)
+            val pendingIntent = PendingIntent.getActivity(
+                this, 0, notificationIntent, pendingIntentFlags
+            )
+
+            val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("بوابة الرسائل HWNix")
+                .setContentText("تطبيق بوابة الرسائل يعمل بالخلفية لمزامنة الخطوط والرسائل.")
+                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .build()
+
+            startForeground(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed in onCreate: ${e.message}", e)
+            BootTracker.logException(applicationContext, "AgentForegroundService.onCreate", e)
         }
-
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, notificationIntent, pendingIntentFlags
-        )
-
-        val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("بوابة الرسائل HWNix")
-            .setContentText("تطبيق بوابة الرسائل يعمل بالخلفية لمزامنة الخطوط والرسائل.")
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .build()
-
-        startForeground(NOTIFICATION_ID, notification)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i(TAG, "Starting Agent Foreground Service...")
-        startPeriodicSyncLoop()
+        try {
+            val source = intent?.getStringExtra("launcher_source") ?: "UNKNOWN"
+            Log.i(TAG, "Starting Agent Foreground Service (Source: $source)...")
+            BootTracker.updateStage(applicationContext, "SERVICE_ON_START_COMMAND (Source: $source)")
+            startPeriodicSyncLoop()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed in onStartCommand: ${e.message}", e)
+            BootTracker.logException(applicationContext, "AgentForegroundService.onStartCommand", e)
+        }
         return START_STICKY
     }
 
@@ -82,6 +96,7 @@ class AgentForegroundService : Service() {
 
     private fun startPeriodicSyncLoop() {
         syncJob?.cancel()
+        BootTracker.updateStage(applicationContext, "SYNC_LOOP_STARTED")
         syncJob = serviceScope.launch {
             while (true) {
                 // تنشيط WakeLock أثناء دورة المزامنة لضمان اكتمالها على Android 9

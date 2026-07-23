@@ -81,7 +81,9 @@ class MainActivity : ComponentActivity() {
                         isSessionReady = true
 
                         // تشغيل الخدمة الخلفية المستمرة بعد تهيئة الجلسة
-                        val serviceIntent = Intent(context, AgentForegroundService::class.java)
+                        val serviceIntent = Intent(context, AgentForegroundService::class.java).apply {
+                            putExtra("launcher_source", "MAIN_ACTIVITY")
+                        }
                         try {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                 context.startForegroundService(serviceIntent)

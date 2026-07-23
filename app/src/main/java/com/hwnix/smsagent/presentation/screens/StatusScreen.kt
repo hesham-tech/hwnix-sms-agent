@@ -16,6 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hwnix.smsagent.presentation.status.StatusUiState
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
+import com.hwnix.smsagent.data.local.BootTracker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,6 +31,13 @@ fun StatusScreen(
     onLogoutClick: () -> Unit,
     onBatteryOptimizeClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    var bootDiagnostics by remember { mutableStateOf(BootTracker.getDiagnostics(context)) }
+
+    LaunchedEffect(state.isRefreshing) {
+        bootDiagnostics = BootTracker.getDiagnostics(context)
+    }
+
     PullToRefreshBox(
         isRefreshing = state.isRefreshing,
         onRefresh = onRefresh,
@@ -72,6 +83,150 @@ fun StatusScreen(
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold
                     )
+                }
+            }
+        }
+
+        // بطاقة تشخيصات الإقلاع المحلية (Local Boot Diagnostics & System Info)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "تشخيصات الإقلاع والنظام (Diagnostics Panel)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // معلومات النظام المتقدمة
+                Text(
+                    text = "معلومات النظام والعتاد:",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "• الموديل: ${bootDiagnostics["system_manufacturer"]} - ${bootDiagnostics["system_model"]}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "• إصدار أندرويد: ${bootDiagnostics["system_android_version"]} (SDK ${bootDiagnostics["system_sdk"]})",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "• تم استثناء البطارية: ${if (bootDiagnostics["system_battery_ignored"] == true) "نعم ✅" else "لا ⚠️"}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "• الهاتف مفتوح القفل (Direct Boot): ${if (bootDiagnostics["system_unlocked"] == true) "نعم (مفتوح) ✅" else "لا (مقفل) ⚠️"}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Divider(modifier = Modifier.padding(vertical = 12.dp))
+
+                // معلومات الإقلاع
+                Text(
+                    text = "حالة آخر إقلاع (Boot Info):",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "• عدد مرات الإقلاع المكتشفة: ${bootDiagnostics["boot_count"]}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "• آخر حدث إشارات (Action): ${bootDiagnostics["last_action"]}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "• آخر مرحلة مستقرة: ${bootDiagnostics["last_stage"]}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "• وقت آخر إقلاع: ${bootDiagnostics["last_timestamp"]}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                val stageLog = bootDiagnostics["stage_log"] as? String ?: ""
+                if (stageLog.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "مسار المراحل بالتفصيل (Timeline):",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stageLog,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+
+                // عرض الانهيارات والأخطاء البرمجية إن وجدت
+                val exceptionTrace = bootDiagnostics["exception_trace"] as? String ?: ""
+                if (exceptionTrace.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "تنبيه: تم رصد كراش/خطأ في الخلفية ⚠️",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = exceptionTrace,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Button(
+                        onClick = {
+                            val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            val clipData = android.content.ClipData.newPlainText("HWNix Diagnostics", BootTracker.exportFormattedDiagnostics(context))
+                            clipboardManager.setPrimaryClip(clipData)
+                            android.widget.Toast.makeText(context, "تم نسخ تقرير التشخيص للحافظة ✅", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Text("نسخ التقرير")
+                    }
+
+                    TextButton(
+                        onClick = {
+                            BootTracker.clearLog(context)
+                            bootDiagnostics = BootTracker.getDiagnostics(context)
+                        }
+                    ) {
+                        Text("مسح السجل")
+                    }
                 }
             }
         }

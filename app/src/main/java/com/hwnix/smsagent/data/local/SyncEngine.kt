@@ -32,35 +32,63 @@ class SyncEngine(private val context: Context) {
     /**
      * تشغيل المزامنة الشاملة (الرسائل المعلقة والأوامر والنبضات) بشكل خيطي آمن.
      */
+    private fun logAndTrace(stage: String) {
+        Log.i(TAG, stage)
+        BootTracker.updateStage(context, stage)
+        sendRemoteLog("TRACE_SYNC", stage)
+    }
+
     suspend fun performFullSync() {
-        if (sessionManager.getAuthToken() == null) return
+        if (sessionManager.getAuthToken() == null) {
+            logAndTrace("TRACE_SYNC: Aborted (no auth token)")
+            return
+        }
         
         syncMutex.withLock {
-            Log.i(TAG, "Starting full sync cycle...")
+            logAndTrace("TRACE_SYNC_01: Enter Sync()")
             
-            // التأكد من تسجيل الجهاز على السيرفر أولاً
-            if (sessionManager.getDeviceId() == -1L) {
-                val registered = registerDeviceSync()
-                if (!registered) {
-                    Log.e(TAG, "Sync aborted: Device not registered on server.")
-                    return
+            try {
+                // التأكد من تسجيل الجهاز على السيرفر أولاً
+                if (sessionManager.getDeviceId() == -1L) {
+                    logAndTrace("TRACE_SYNC_02: Registering device...")
+                    val registered = registerDeviceSync()
+                    if (!registered) {
+                        Log.e(TAG, "Sync aborted: Device not registered on server.")
+                        logAndTrace("TRACE_SYNC_ABORT: Device registration failed")
+                        return
+                    }
                 }
-            }
-            
-            // 1. فحص صندوق الوارد بالنظام لمزامنة الرسائل الواردة المتراكمة (أثناء توقف التطبيق أو انقطاع الشبكة)
-            runWithBackoff { scanSystemInboxForNewMessages() }
+                logAndTrace("TRACE_SYNC_02: Device registration verified")
+                
+                // 1. فحص صندوق الوارد بالنظام لمزامنة الرسائل الواردة المتراكمة (أثناء توقف التطبيق أو انقطاع الشبكة)
+                logAndTrace("TRACE_SYNC_03: Scanning inbox...")
+                val scanSuccess = runWithBackoff { scanSystemInboxForNewMessages() } ?: false
+                logAndTrace("TRACE_SYNC_04: Inbox scan finished ($scanSuccess)")
 
-            // 2. رفع الرسائل الواردة المتراكمة محلياً
-            runWithBackoff { uploadPendingIncomingSms() }
-            
-            // 2. سحب ومعالجة الأوامر المعلقة من السيرفر
-            runWithBackoff { pullAndProcessCommands() }
-            
-            // 3. إرسال نبضة قلب لتحديث التواجد وسحب الإعدادات
-            val heartbeatSuccess = runWithBackoff { sendHeartbeat() } ?: false
-            
-            if (heartbeatSuccess) {
-                sessionManager.saveLastSyncSuccessTime(System.currentTimeMillis())
+                // 2. رفع الرسائل الواردة المتراكمة محلياً
+                logAndTrace("TRACE_SYNC_05: Uploading pending incoming SMS...")
+                val uploadSuccess = runWithBackoff { uploadPendingIncomingSms() } ?: false
+                logAndTrace("TRACE_SYNC_06: Upload finished ($uploadSuccess)")
+                
+                // 2. سحب ومعالجة الأوامر المعلقة من السيرفر
+                logAndTrace("TRACE_SYNC_07: Pulling server commands...")
+                val pullSuccess = runWithBackoff { pullAndProcessCommands() } ?: false
+                logAndTrace("TRACE_SYNC_08: Commands processed ($pullSuccess)")
+                
+                // 3. إرسال نبضة قلب لتحديث التواجد وسحب الإعدادات
+                logAndTrace("TRACE_SYNC_09: Sending heartbeat...")
+                val heartbeatSuccess = runWithBackoff { sendHeartbeat() } ?: false
+                
+                if (heartbeatSuccess) {
+                    sessionManager.saveLastSyncSuccessTime(System.currentTimeMillis())
+                    logAndTrace("TRACE_SYNC_10: Sync finished successfully")
+                } else {
+                    logAndTrace("TRACE_SYNC_10: Heartbeat failed, sync incomplete")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Sync error: ${e.message}", e)
+                BootTracker.logException(context, "SyncEngine.performFullSync", e)
+                sendRemoteLog("TRACE_SYNC_ERROR", "Sync error: ${e.message}")
             }
         }
     }
@@ -292,6 +320,7 @@ class SyncEngine(private val context: Context) {
                 }
                 Log.i(TAG, "Inbox scan finished. Found: $foundCount, Unsynced: $insertedCount")
                 sendRemoteLog("TRACE_INBOX_SCAN", "Inbox scan finished. Found: $foundCount, Unsynced: $insertedCount")
+                BootTracker.updateStage(context, "TRACE_SYNC: Inbox scan details: found $foundCount, unsynced $insertedCount")
             }
             sessionManager.saveLastIncomingSmsCheckTime(currentTime)
             return@withContext true
@@ -309,10 +338,12 @@ class SyncEngine(private val context: Context) {
         val pending = smsDao.getPendingUploads()
         if (pending.isEmpty()) {
             Log.i(TAG, "No pending SMS to upload.")
+            BootTracker.updateStage(context, "TRACE_SYNC: No pending SMS to upload")
             return@withContext true
         }
 
         Log.i(TAG, "Found ${pending.size} pending SMS to upload.")
+        BootTracker.updateStage(context, "TRACE_SYNC: Found ${pending.size} pending SMS to upload")
 
         val deviceId = sessionManager.getDeviceId()
         val array = JsonArray()
