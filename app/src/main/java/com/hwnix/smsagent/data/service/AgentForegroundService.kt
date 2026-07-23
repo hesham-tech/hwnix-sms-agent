@@ -78,8 +78,11 @@ class AgentForegroundService : Service() {
         return START_STICKY
     }
 
+    private var syncJob: Job? = null
+
     private fun startPeriodicSyncLoop() {
-        serviceScope.launch {
+        syncJob?.cancel()
+        syncJob = serviceScope.launch {
             while (true) {
                 // تنشيط WakeLock أثناء دورة المزامنة لضمان اكتمالها على Android 9
                 try {
