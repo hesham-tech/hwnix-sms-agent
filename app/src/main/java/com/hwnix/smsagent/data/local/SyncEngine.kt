@@ -434,6 +434,24 @@ class SyncEngine(private val context: Context) {
         return cleaned
     }
 
+    @android.annotation.SuppressLint("MissingPermission")
+    private fun getSubscriptionIdForSlot(slotIndex: Int): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+            val subManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? android.telephony.SubscriptionManager
+            if (subManager != null) {
+                val infoList = subManager.activeSubscriptionInfoList
+                if (infoList != null) {
+                    for (info in infoList) {
+                        if (info.simSlotIndex == slotIndex) {
+                            return info.subscriptionId
+                        }
+                    }
+                }
+            }
+        }
+        return -1
+    }
+
     /**
      * تنفيذ أمر إرسال رسالة SMS مع تتبع حالة التسليم الفعلي.
      */
@@ -443,13 +461,23 @@ class SyncEngine(private val context: Context) {
         val phoneNumber = cleanPhoneNumber(rawPhone)
         val messageBody = payload.get("message_body").asString
         val slotIndex = payload.get("slot_index").asInt
+        val subId = getSubscriptionIdForSlot(slotIndex)
 
         try {
-            val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                context.getSystemService(SmsManager::class.java)
+            val smsManager = if (subId != -1) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    context.getSystemService(SmsManager::class.java).createForSubscriptionId(subId)
+                } else {
+                    @Suppress("DEPRECATION")
+                    SmsManager.getSmsManagerForSubscriptionId(subId)
+                }
             } else {
-                @Suppress("DEPRECATION")
-                SmsManager.getDefault()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    context.getSystemService(SmsManager::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    SmsManager.getDefault()
+                }
             }
 
             // إعداد SentIntent لمعرفة نتيجة الإرسال للشبكة
@@ -462,6 +490,8 @@ class SyncEngine(private val context: Context) {
                     setPackage(context.packageName)
                     putExtra("command_id", commandId)
                     putExtra("message_id", messageId)
+                    putExtra("phone_number", phoneNumber)
+                    putExtra("message_body", messageBody)
                 },
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
                     android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT

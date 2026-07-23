@@ -26,12 +26,15 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
         val action = intent.action
         val commandId = intent.getLongExtra("command_id", -1L)
         val messageId = intent.getLongExtra("message_id", -1L)
+        val phoneNumber = intent.getStringExtra("phone_number") ?: ""
+        val messageBody = intent.getStringExtra("message_body") ?: ""
+        val capturedResultCode = resultCode // Capture immediately on the main thread!
 
         val extrasString = StringBuilder()
         intent.extras?.keySet()?.forEach { key ->
             extrasString.append("$key=${intent.extras?.get(key)}; ")
         }
-        Log.i(TAG, "TRACE 1.5: SmsDeliveryReceiver.onReceive() triggered. action=$action, resultCode=$resultCode, command_id=$commandId, message_id=$messageId, extras={$extrasString}")
+        Log.i(TAG, "TRACE 1.5: SmsDeliveryReceiver.onReceive() triggered. action=$action, resultCode=$capturedResultCode, command_id=$commandId, message_id=$messageId, extras={$extrasString}")
 
         android.widget.Toast.makeText(
             context,
@@ -45,16 +48,19 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
         GlobalScope.launch(Dispatchers.IO) {
             try {
                 // إرسال اللوج الخلفي أولاً
-                sendRemoteLog(context, "TRACE 1.5", "SmsDeliveryReceiver.onReceive() triggered. action=$action, resultCode=$resultCode, command_id=$commandId, message_id=$messageId, extras={$extrasString}", commandId, messageId)
+                sendRemoteLog(context, "TRACE 1.5", "SmsDeliveryReceiver.onReceive() triggered. action=$action, resultCode=$capturedResultCode, command_id=$commandId, message_id=$messageId, extras={$extrasString}", commandId, messageId)
                 
                 when (action) {
                     ACTION_SMS_SENT -> {
-                        val status = when (resultCode) {
+                        val status = when (capturedResultCode) {
                             Activity.RESULT_OK -> "executed"
                             else -> "failed"
                         }
                         Log.i(TAG, "SMS_SENT — cmd: $commandId, msg: $messageId, status: $status")
-                        reportCommandExecution(context, commandId, messageId, status, resultCode)
+                        if (status == "executed" && phoneNumber.isNotBlank() && messageBody.isNotBlank()) {
+                            writeSmsToSentBox(context, phoneNumber, messageBody)
+                        }
+                        reportCommandExecution(context, commandId, messageId, status, capturedResultCode)
                     }
                     ACTION_SMS_DELIVERED -> {
                         Log.i(TAG, "SMS_DELIVERED — cmd: $commandId, msg: $messageId")
@@ -66,6 +72,22 @@ class SmsDeliveryReceiver : BroadcastReceiver() {
             } finally {
                 pendingResult.finish()
             }
+        }
+    }
+
+    private fun writeSmsToSentBox(context: Context, phoneNumber: String, messageBody: String) {
+        try {
+            val values = android.content.ContentValues().apply {
+                put("address", phoneNumber)
+                put("body", messageBody)
+                put("date", System.currentTimeMillis())
+                put("read", 1) // 1 means read
+                put("type", 2) // 2 means MESSAGE_TYPE_SENT
+            }
+            context.contentResolver.insert(android.net.Uri.parse("content://sms/sent"), values)
+            Log.i(TAG, "Successfully wrote sent SMS to system sent box")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write sent SMS to system sent box: ${e.message}")
         }
     }
 
