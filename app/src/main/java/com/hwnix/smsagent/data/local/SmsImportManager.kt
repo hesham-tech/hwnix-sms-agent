@@ -3,6 +3,8 @@ package com.hwnix.smsagent.data.local
 import android.content.Context
 import android.util.Log
 import com.hwnix.smsagent.core.di.ServiceLocator
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.security.MessageDigest
 import java.util.UUID
 
@@ -18,10 +20,11 @@ data class SmsImportRequest(
     val dateTimestamp: Long? = null
 )
 
-/* تعليق عربي مختصر: مدير استيراد الرسائل الموحد لمنع تكرار الرسائل وتتبع مصادرها بدقة */
+/* تعليق عربي مختصر: مدير استيراد الرسائل الموحد لمنع تكرار الرسائل وتتبع مصادرها بدقة بالغة مع قفل التزامن و Trace ID */
 object SmsImportManager {
 
     private const val TAG = "SmsImportManager"
+    private val importMutex = Mutex()
 
     fun determineSentAt(pduTimestamp: Long?, dateSent: Long?, date: Long?, fallbackSentAt: Long): Long {
         val selected = when {
@@ -30,19 +33,16 @@ object SmsImportManager {
             date != null && date > 0 -> date
             else -> fallbackSentAt
         }
-        Log.i(TAG, "SMS_TIMESTAMP_COMPARE | PDU: $pduTimestamp | DATE_SENT: $dateSent | DATE: $date | Selected: $selected")
         return selected
     }
 
-    fun generateIdempotencyKey(req: SmsImportRequest): String {
-        return if (!req.androidSmsId.isNullOrEmpty()) {
-            "sys_id_${req.androidSmsId}"
-        } else {
-            val normalizedAddress = req.phoneNumber.replace("[^0-9]".toRegex(), "")
-                .let { if (it.length > 9) it.takeLast(9) else it }
-            val bodyHash = sha256(req.messageBody)
-            "key_${normalizedAddress}_${req.sentAt}_${req.subscriptionId}_$bodyHash"
-        }
+    fun generateIdempotencyKey(phoneNumber: String, sentAt: Long, subscriptionId: String, messageBody: String): String {
+        val normalizedAddress = phoneNumber.replace("[^0-9]".toRegex(), "")
+            .let { if (it.length > 9) it.takeLast(9) else it }
+        // تجميع نافذة زمنية مرنة بمقدار 3 ثوانٍ لمعادلة أدنى فروق أجزاء الثانية بين الـ PDU ونظام أندرويد
+        val timeBucket = (sentAt / 3000) * 3000
+        val bodyHash = sha256(messageBody.trim())
+        return "key_${normalizedAddress}_${timeBucket}_${subscriptionId}_$bodyHash"
     }
 
     private fun sha256(input: String): String {
@@ -50,7 +50,9 @@ object SmsImportManager {
         return bytes.take(4).joinToString("") { "%02x".format(it) }
     }
 
-    suspend fun importMessage(context: Context, request: SmsImportRequest): Boolean {
+    suspend fun importMessage(context: Context, request: SmsImportRequest): Boolean = importMutex.withLock {
+        val traceId = "TRC-${UUID.randomUUID().toString().take(6).uppercase()}"
+
         val resolvedSentAt = determineSentAt(
             request.pduTimestamp,
             request.dateSentTimestamp,
@@ -59,18 +61,28 @@ object SmsImportManager {
         )
         val finalRequest = request.copy(sentAt = resolvedSentAt)
 
-        val idempotencyKey = generateIdempotencyKey(finalRequest)
+        val idempotencyKey = generateIdempotencyKey(
+            finalRequest.phoneNumber,
+            finalRequest.sentAt,
+            finalRequest.subscriptionId,
+            finalRequest.messageBody
+        )
         val bodyHash = sha256(finalRequest.messageBody)
-        val traceMessage = "SMS_IMPORT_ATTEMPT | source=${finalRequest.source} | id=${finalRequest.androidSmsId ?: "N/A"} | address=${finalRequest.phoneNumber} | date=${finalRequest.sentAt} | hash=$bodyHash | key=$idempotencyKey"
 
-        Log.i(TAG, traceMessage)
+        val attemptLog = "[$traceId] IMPORT_ATTEMPT | source=${finalRequest.source} | sysId=${finalRequest.androidSmsId ?: "N/A"} | address=${finalRequest.phoneNumber} | sentAt=${finalRequest.sentAt}"
+        Log.i(TAG, attemptLog)
+        BootTracker.updateStage(context, attemptLog)
+
+        val keyLog = "[$traceId] KEY_GENERATED | key=$idempotencyKey | hash=$bodyHash"
+        Log.i(TAG, keyLog)
 
         val isUnlocked = androidx.core.os.UserManagerCompat.isUserUnlocked(context)
 
         if (!isUnlocked) {
-            Log.w(TAG, "Device is locked (Direct Boot). Saving SMS to Device Protected Storage. Source: ${request.source}")
-            BootTracker.updateStage(context, "SMS_IMPORT_DIRECT_BOOT | source=${request.source} | key=$idempotencyKey")
-            saveToDeviceProtectedStorage(context, request, idempotencyKey)
+            val dbLog = "[$traceId] DIRECT_BOOT_LOCKED | Saving to Device Protected Storage"
+            Log.w(TAG, dbLog)
+            BootTracker.updateStage(context, dbLog)
+            saveToDeviceProtectedStorage(context, finalRequest, idempotencyKey, traceId)
             return false
         }
 
@@ -78,44 +90,47 @@ object SmsImportManager {
             val smsDao = ServiceLocator.database.smsDao()
 
             val exists = smsDao.existsByIdempotencyKey(idempotencyKey)
+            val lookupLog = "[$traceId] DB_LOOKUP | exists=$exists"
+            Log.i(TAG, lookupLog)
+
             if (exists) {
-                val skipMessage = "SMS_DUPLICATE_SKIPPED | source=${request.source} | key=$idempotencyKey"
+                val skipMessage = "[$traceId] DUPLICATE_SKIPPED | source=${finalRequest.source} | key=$idempotencyKey"
                 Log.i(TAG, skipMessage)
                 BootTracker.updateStage(context, skipMessage)
                 return false
             }
 
             val smsEntity = SmsEntity(
-                phoneNumber = request.phoneNumber,
-                messageBody = request.messageBody,
+                phoneNumber = finalRequest.phoneNumber,
+                messageBody = finalRequest.messageBody,
                 direction = "incoming",
                 status = "pending_upload",
                 messageRef = UUID.randomUUID().toString(),
-                subscriptionId = request.subscriptionId,
-                sentAt = request.sentAt,
+                subscriptionId = finalRequest.subscriptionId,
+                sentAt = finalRequest.sentAt,
                 idempotencyKey = idempotencyKey
             )
 
             val insertedRowId = smsDao.insert(smsEntity)
             if (insertedRowId > 0) {
-                val successMessage = "SMS_DB_INSERT | rowId=$insertedRowId | source=${request.source} | key=$idempotencyKey"
+                val successMessage = "[$traceId] INSERTED | rowId=$insertedRowId | source=${finalRequest.source} | key=$idempotencyKey"
                 Log.i(TAG, successMessage)
                 BootTracker.updateStage(context, successMessage)
                 return true
             } else {
-                val conflictMessage = "SMS_DUPLICATE_SKIPPED (DB Conflict) | source=${request.source} | key=$idempotencyKey"
+                val conflictMessage = "[$traceId] DUPLICATE_SKIPPED (DB Conflict) | source=${finalRequest.source} | key=$idempotencyKey"
                 Log.w(TAG, conflictMessage)
                 BootTracker.updateStage(context, conflictMessage)
                 return false
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed database write under unlocked state, falling back to file storage: ${e.message}")
-            saveToDeviceProtectedStorage(context, request, idempotencyKey)
+            Log.e(TAG, "[$traceId] Failed database write under unlocked state, falling back to file storage: ${e.message}")
+            saveToDeviceProtectedStorage(context, finalRequest, idempotencyKey, traceId)
             return false
         }
     }
 
-    private fun saveToDeviceProtectedStorage(context: Context, request: SmsImportRequest, idempotencyKey: String) {
+    private fun saveToDeviceProtectedStorage(context: Context, request: SmsImportRequest, idempotencyKey: String, traceId: String) {
         try {
             val deviceProtectedContext = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
                 context.createDeviceProtectedStorageContext()
@@ -128,7 +143,7 @@ object SmsImportManager {
             val fileName = "sms_${idempotencyKey}.json"
             val file = java.io.File(directory, fileName)
             if (file.exists()) {
-                Log.i(TAG, "File $fileName already exists in Direct Boot storage. Skipping duplicate write.")
+                Log.i(TAG, "[$traceId] File $fileName already exists in Direct Boot storage. Skipping duplicate write.")
                 return
             }
 
@@ -140,12 +155,13 @@ object SmsImportManager {
                 addProperty("idempotencyKey", idempotencyKey)
                 addProperty("source", request.source)
                 addProperty("androidSmsId", request.androidSmsId ?: "")
+                addProperty("traceId", traceId)
             }
 
             file.writeText(json.toString())
-            Log.i(TAG, "Saved SMS to Direct Boot storage: ${file.name}")
+            Log.i(TAG, "[$traceId] Saved SMS to Direct Boot storage: ${file.name}")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to save SMS to Direct Boot storage: ${e.message}")
+            Log.e(TAG, "[$traceId] Failed to save SMS to Direct Boot storage: ${e.message}")
         }
     }
 }

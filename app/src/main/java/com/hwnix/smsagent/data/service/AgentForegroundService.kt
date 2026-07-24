@@ -103,9 +103,79 @@ class AgentForegroundService : Service() {
 
             promoteToForeground()
             ensureDependencies()
+            registerNetworkMonitor()
         } catch (e: Exception) {
             Log.e(TAG, "Failed in onCreate: ${e.message}", e)
             BootTracker.logException(applicationContext, "AgentForegroundService.onCreate", e)
+        }
+    }
+
+    private var networkCallback: android.net.ConnectivityManager.NetworkCallback? = null
+
+    private fun registerNetworkMonitor() {
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val builder = android.net.NetworkRequest.Builder()
+                .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+
+            networkCallback = object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    val logMsg = "NETWORK_RESTORED: Internet connection restored. Triggering immediate sync..."
+                    Log.i(TAG, logMsg)
+                    BootTracker.updateStage(applicationContext, logMsg)
+
+                    com.hwnix.smsagent.data.local.ServiceHealthMonitor.updateHealth(
+                        isInternetAvailable = true,
+                        reason = "عودة الاتصال بالإنترنت",
+                        context = applicationContext
+                    )
+                    updateLiveNotification()
+
+                    serviceScope.launch {
+                        try {
+                            if (ensureDependencies()) {
+                                syncEngine.performFullSync()
+                                com.hwnix.smsagent.data.local.ServiceHealthMonitor.recordSuccessfulSync(applicationContext)
+                                com.hwnix.smsagent.data.local.ServiceHealthMonitor.recordHeartbeat(applicationContext)
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Immediate sync after network restore failed: ${e.message}")
+                        } finally {
+                            updateLiveNotification()
+                        }
+                    }
+                }
+
+                override fun onLost(network: android.net.Network) {
+                    val logMsg = "NETWORK_DISCONNECTED: Internet connection lost!"
+                    Log.w(TAG, logMsg)
+                    BootTracker.updateStage(applicationContext, logMsg)
+
+                    com.hwnix.smsagent.data.local.ServiceHealthMonitor.updateHealth(
+                        isInternetAvailable = false,
+                        reason = "انقطاع الاتصال بالإنترنت",
+                        context = applicationContext
+                    )
+                    updateLiveNotification()
+                }
+            }
+
+            cm.registerNetworkCallback(builder.build(), networkCallback!!)
+            Log.i(TAG, "NetworkCallback registered successfully.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to register NetworkCallback: ${e.message}")
+        }
+    }
+
+    private fun unregisterNetworkMonitor() {
+        try {
+            if (networkCallback != null) {
+                val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                cm.unregisterNetworkCallback(networkCallback!!)
+                networkCallback = null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to unregister NetworkCallback: ${e.message}")
         }
     }
 
@@ -264,6 +334,7 @@ class AgentForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isForegroundPromoted = false
+        unregisterNetworkMonitor()
         updateServiceState(AgentServiceState.STOPPED)
         try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (e: Exception) { /* ignore */ }
         serviceJob.cancel()

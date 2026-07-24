@@ -18,6 +18,7 @@ data class ServiceHealth(
     val isServiceRunning: Boolean = false,
     val isForegroundActive: Boolean = false,
     val isSyncLoopRunning: Boolean = false,
+    val isInternetAvailable: Boolean = true,
     val lastSuccessfulSyncTime: Long = 0L,
     val lastHeartbeatTime: Long = 0L,
     val lastPollTime: Long = 0L,
@@ -44,6 +45,7 @@ object ServiceHealthMonitor {
         isServiceRunning: Boolean? = null,
         isForegroundActive: Boolean? = null,
         isSyncLoopRunning: Boolean? = null,
+        isInternetAvailable: Boolean? = null,
         lastSuccessfulSyncTime: Long? = null,
         lastHeartbeatTime: Long? = null,
         lastPollTime: Long? = null,
@@ -60,6 +62,7 @@ object ServiceHealthMonitor {
         val newServiceRunning = isServiceRunning ?: old.isServiceRunning
         val newForegroundActive = isForegroundActive ?: old.isForegroundActive
         val newSyncLoopRunning = isSyncLoopRunning ?: old.isSyncLoopRunning
+        val newInternetAvailable = isInternetAvailable ?: old.isInternetAvailable
         val newLastSync = lastSuccessfulSyncTime ?: old.lastSuccessfulSyncTime
         val newLastHeartbeat = lastHeartbeatTime ?: old.lastHeartbeatTime
         val newLastPoll = lastPollTime ?: old.lastPollTime
@@ -72,6 +75,7 @@ object ServiceHealthMonitor {
         val calculatedHealth = when {
             !newServiceRunning || !newForegroundActive -> ServiceHealthState.BROKEN
             !newSyncLoopRunning -> ServiceHealthState.BROKEN
+            !newInternetAvailable -> ServiceHealthState.WARNING // تحذير: لا يوجد اتصال بالإنترنت
             newFailures >= 3 -> ServiceHealthState.BROKEN
             newFailures >= 1 -> ServiceHealthState.DEGRADED
             timeSinceLastSync > 180 -> ServiceHealthState.WARNING // لم تتم المزامنة لأكثر من 3 دقائق
@@ -80,25 +84,31 @@ object ServiceHealthMonitor {
             else -> ServiceHealthState.STARTING
         }
 
-        val formattedMessage = when (calculatedHealth) {
-            ServiceHealthState.HEALTHY -> {
-                val sec = if (newLastSync > 0) (now - newLastSync) / 1000 else 0
-                when {
-                    sec < 5 -> "آخر مزامنة تمت للتو"
-                    sec < 60 -> "آخر مزامنة منذ $sec ثانية"
-                    else -> "آخر مزامنة منذ ${sec / 60} دقيقة"
-                }
+        val secSinceSync = if (newLastSync > 0) (now - newLastSync) / 1000 else 0
+        val lastSyncStr = when {
+            newLastSync <= 0 -> "لم تتم المزامنة بعد"
+            secSinceSync < 5 -> "منذ لحظات"
+            secSinceSync < 60 -> "منذ $secSinceSync ثانية"
+            else -> "منذ ${secSinceSync / 60} دقيقة"
+        }
+
+        val formattedMessage = when {
+            !newInternetAvailable -> {
+                "المزامنة متوقفة — لا يوجد اتصال بالإنترنت (آخر مزامنة $lastSyncStr)"
             }
-            ServiceHealthState.DEGRADED -> {
+            calculatedHealth == ServiceHealthState.HEALTHY -> {
+                "آخر مزامنة ناجحة $lastSyncStr"
+            }
+            calculatedHealth == ServiceHealthState.DEGRADED -> {
                 "تأخر المزامنة (فشل $newFailures) — محاولة استعادة..."
             }
-            ServiceHealthState.WARNING -> {
+            calculatedHealth == ServiceHealthState.WARNING -> {
                 "تأخر الاستجابة — جاري إعادة الاتصال..."
             }
-            ServiceHealthState.BROKEN -> {
+            calculatedHealth == ServiceHealthState.BROKEN -> {
                 "الخدمة غير مستقرة — جاري التعافي التلقائي..."
             }
-            ServiceHealthState.STARTING -> {
+            else -> {
                 "جاري تهيئة خدمات بوابة الرسائل..."
             }
         }
@@ -107,6 +117,7 @@ object ServiceHealthMonitor {
             isServiceRunning = newServiceRunning,
             isForegroundActive = newForegroundActive,
             isSyncLoopRunning = newSyncLoopRunning,
+            isInternetAvailable = newInternetAvailable,
             lastSuccessfulSyncTime = newLastSync,
             lastHeartbeatTime = newLastHeartbeat,
             lastPollTime = newLastPoll,
