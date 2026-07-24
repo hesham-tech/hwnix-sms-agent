@@ -5,15 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
 import android.util.Log
-import com.hwnix.smsagent.data.local.SmsEntity
-import com.hwnix.smsagent.data.local.AppDatabase
-import com.hwnix.smsagent.data.local.SyncEngine
+import com.hwnix.smsagent.data.service.AgentRestartWorker
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
-import java.util.UUID
 
-// مستقبل الرسائل الواردة — يجمع أجزاء الرسالة الطويلة في رسالة واحدة قبل الحفظ
+// مستقبل الرسائل الواردة — يجمع أجزاء الرسالة الطويلة في رسالة واحدة قبل الحفظ ومصمم ببدائل تعافي فائقة
 class SmsReceiver : BroadcastReceiver() {
 
     companion object {
@@ -51,7 +48,10 @@ class SmsReceiver : BroadcastReceiver() {
                                 context.startService(serviceIntent)
                             }
                         } catch (sEx: Exception) {
-                            Log.w(TAG, "Could not start foreground service from SmsReceiver: ${sEx.message}")
+                            Log.w(TAG, "Could not start foreground service from SmsReceiver, triggering WorkManager fallback: ${sEx.message}")
+                            try {
+                                AgentRestartWorker.enqueue(context)
+                            } catch (_: Exception) {}
                         }
 
                         val request = com.hwnix.smsagent.data.local.SmsImportRequest(

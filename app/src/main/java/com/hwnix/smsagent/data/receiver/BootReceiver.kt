@@ -7,45 +7,38 @@ import android.os.Build
 import android.util.Log
 import com.hwnix.smsagent.data.local.BootTracker
 import com.hwnix.smsagent.data.service.AgentForegroundService
+import com.hwnix.smsagent.data.service.AgentRestartWorker
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
- * تعليق عربي مختصر: مستقبل أحداث إقلاع وهيكلة تشغيل الهاتف لتسجيل التشخيصات محلياً وإطلاق خدمات الخلفية.
+ * تعليق عربي مختصر: مستقبل الإقلاع التلقائي واستبدال الحزمة مع حماية التعافي عبر WorkManager في أندرويد 12+.
  */
 class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: "UNKNOWN_ACTION"
+        Log.i("BootReceiver", "BootReceiver trigger received with action: $action")
 
-        // ════════════════════════════════════════════════════════
-        // TRIPWIRE — أول سطر مطلق — مستقل عن أي منطق آخر
-        // يكتب ملف خام مباشرة في Device Protected Storage
-        // إذا وُجد هذا الملف بعد الإقلاع → BootReceiver استُدعي فعلاً
-        // إذا لم يوجد → لم يُستدعَ أصلاً
-        // ════════════════════════════════════════════════════════
         try {
-            val dpContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
-                context.createDeviceProtectedStorageContext() else context
-            val tripwireFile = File(dpContext.filesDir, "boot_tripwire.txt")
-            val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-            val entry = "[$timestamp] BOOT_RECEIVER_CALLED | action=$action\n"
-            tripwireFile.appendText(entry)
-            Log.i("BootReceiver", "TRIPWIRE written: $entry")
+            if (BootTracker.ENABLE_DIAGNOSTICS) {
+                val dpContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+                    context.createDeviceProtectedStorageContext() else context
+                val tripwireFile = File(dpContext.filesDir, "boot_tripwire.txt")
+                val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+                val entry = "[$timestamp] BOOT_RECEIVER_CALLED | action=$action\n"
+                tripwireFile.appendText(entry)
+            }
         } catch (t: Throwable) {
-            Log.e("BootReceiver", "TRIPWIRE write failed: ${t.message}")
+            Log.e("BootReceiver", "Failed to write boot tripwire: ${t.message}")
         }
-        // ════════════════════════════════════════════════════════
-
-        Log.i("BootReceiver", "System event detected (Action: $action).")
 
         try {
-            // تسجيل الحدث محلياً كخطوة أولى
             BootTracker.logBootEvent(context, action)
 
-            if (action == Intent.ACTION_BOOT_COMPLETED || 
+            if (action == Intent.ACTION_BOOT_COMPLETED ||
                 action == Intent.ACTION_LOCKED_BOOT_COMPLETED ||
                 action == Intent.ACTION_USER_UNLOCKED ||
                 action == Intent.ACTION_USER_PRESENT ||
@@ -68,8 +61,14 @@ class BootReceiver : BroadcastReceiver() {
                     BootTracker.updateStage(context, "SERVICE_START_COMMAND_SENT")
                 } catch (e: Exception) {
                     val errorMsg = "START_FAILED: ${e.message}"
-                    Log.e("BootReceiver", "Failed to start service: $errorMsg", e)
+                    Log.e("BootReceiver", "Failed to start service directly, triggering WorkManager fallback: $errorMsg", e)
                     BootTracker.logException(context, "BootReceiver.startService", e)
+                    // WorkManager Fallback لإعادة إحياء الخدمة أماناً عند حظر الخلفية في أندرويد 12+
+                    try {
+                        AgentRestartWorker.enqueue(context)
+                    } catch (wEx: Exception) {
+                        Log.e("BootReceiver", "WorkManager fallback also failed: ${wEx.message}")
+                    }
                 }
             } else {
                 BootTracker.updateStage(context, "RECEIVER_ACTION_IGNORED")
@@ -78,7 +77,7 @@ class BootReceiver : BroadcastReceiver() {
             Log.e("BootReceiver", "Global error inside onReceive: ${globalEx.message}", globalEx)
             try {
                 BootTracker.logException(context, "BootReceiver.onReceive", globalEx)
-            } catch (t: Throwable) { /* ignore */ }
+            } catch (_: Throwable) {}
         }
     }
 }

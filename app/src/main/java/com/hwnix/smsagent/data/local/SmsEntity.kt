@@ -6,7 +6,11 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "sms_cache",
-    indices = [Index(value = ["idempotencyKey"], unique = true)]
+    indices = [
+        Index(value = ["idempotencyKey"], unique = true),
+        Index(value = ["status"]),
+        Index(value = ["createdAt"])
+    ]
 )
 data class SmsEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

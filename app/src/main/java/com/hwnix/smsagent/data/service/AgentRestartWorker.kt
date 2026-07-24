@@ -5,6 +5,9 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.hwnix.smsagent.data.local.SessionManager
 
@@ -13,6 +16,22 @@ class AgentRestartWorker(
     context: Context,
     workerParams: WorkerParameters
 ) : CoroutineWorker(context, workerParams) {
+
+    companion object {
+        fun enqueue(context: Context) {
+            try {
+                val request = OneTimeWorkRequestBuilder<AgentRestartWorker>().build()
+                WorkManager.getInstance(context).enqueueUniqueWork(
+                    "AgentRestartWorker",
+                    ExistingWorkPolicy.REPLACE,
+                    request
+                )
+                Log.i("AgentRestartWorker", "AgentRestartWorker enqueued successfully.")
+            } catch (e: Exception) {
+                Log.e("AgentRestartWorker", "Failed to enqueue AgentRestartWorker: ${e.message}")
+            }
+        }
+    }
 
     override suspend fun doWork(): Result {
         Log.i("AgentRestartWorker", "Worker triggered. Checking foreground service state...")
