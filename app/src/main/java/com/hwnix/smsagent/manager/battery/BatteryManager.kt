@@ -20,6 +20,24 @@ class BatteryManager(private val context: Context) {
     }
 
     /**
+     * فحص ما إذا كان النظام يفرض قيود خلفية صارمة على التطبيق (Background Restricted).
+     */
+    fun isBackgroundRestricted(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+            return am?.isBackgroundRestricted == true
+        }
+        return false
+    }
+
+    /**
+     * فحص صلاحية الإشعارات الفعالة.
+     */
+    fun isNotificationPermissionGranted(): Boolean {
+        return androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+
+    /**
      * طلب استثناء من تحسينات البطارية بفتح واجهة إعدادات النظام.
      */
     fun requestIgnoreBatteryOptimizations() {

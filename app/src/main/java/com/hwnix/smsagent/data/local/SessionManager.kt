@@ -8,15 +8,18 @@ import java.util.UUID
 
 class SessionManager(context: Context) {
 
-    private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
-
-    private val sharedPreferences: SharedPreferences = EncryptedSharedPreferences.create(
-        "hwnix_secured_session",
-        masterKeyAlias,
-        context,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val sharedPreferences: SharedPreferences = try {
+        val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+        EncryptedSharedPreferences.create(
+            "hwnix_secured_session",
+            masterKeyAlias,
+            context,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    } catch (e: Exception) {
+        context.getSharedPreferences("hwnix_unencrypted_session", Context.MODE_PRIVATE)
+    }
 
     companion object {
         private const val KEY_BASE_URL = "base_url"
@@ -147,6 +150,7 @@ class SessionManager(context: Context) {
     fun cleanPhoneNumber(phone: String): String {
         var cleaned = phone.trim()
         if (cleaned.startsWith("+20")) cleaned = "0" + cleaned.removePrefix("+20")
+        else if (cleaned.startsWith("+0")) cleaned = cleaned.removePrefix("+")
         else if (cleaned.startsWith("+")) cleaned = "0" + cleaned.removePrefix("+")
         return cleaned
     }

@@ -334,15 +334,20 @@ class AgentForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isForegroundPromoted = false
+        val forensicLog = "FORENSIC_EVENT: SERVICE_ON_DESTROY | Time: ${System.currentTimeMillis()}"
+        Log.i(TAG, forensicLog)
+        BootTracker.updateStage(applicationContext, forensicLog)
         unregisterNetworkMonitor()
         updateServiceState(AgentServiceState.STOPPED)
         try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (e: Exception) { /* ignore */ }
         serviceJob.cancel()
-        Log.i(TAG, "Agent Foreground Service destroyed.")
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        Log.i(TAG, "Task removed. Scheduling service restart...")
+        val forensicLog = "FORENSIC_EVENT: SERVICE_ON_TASK_REMOVED | Action: ${rootIntent?.action ?: "N/A"} | Time: ${System.currentTimeMillis()}"
+        Log.i(TAG, forensicLog)
+        BootTracker.updateStage(applicationContext, forensicLog)
+
         val restartServiceIntent = Intent(applicationContext, this.javaClass).apply {
             setPackage(packageName)
             putExtra("launcher_source", "ALARM_MANAGER_RESTART")
@@ -360,8 +365,13 @@ class AgentForegroundService : Service() {
                 System.currentTimeMillis() + 1000,
                 pendingIntent
             )
+            val alarmLog = "FORENSIC_EVENT: ALARM_RESTART_SCHEDULED | Delay: 1000ms"
+            Log.i(TAG, alarmLog)
+            BootTracker.updateStage(applicationContext, alarmLog)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to schedule restart alarm: ${e.message}")
+            val alarmErr = "FORENSIC_EVENT: ALARM_SCHEDULE_FAILED | Err: ${e.message}"
+            Log.e(TAG, alarmErr)
+            BootTracker.updateStage(applicationContext, alarmErr)
         }
         super.onTaskRemoved(rootIntent)
     }

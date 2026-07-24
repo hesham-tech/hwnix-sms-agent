@@ -10,10 +10,11 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * تعليق عربي مختصر: وحدة تشخيص دائمة ومتقدمة لتتبع الإقلاع محلياً وتجميع أخطاء التشغيل ومعلومات النظام.
+ * تعليق عربي مختصر: وحدة تشخيص لتتبع الإقلاع محلياً ومحكومة بـ Feature Flag لاختبار الأداء والتعافي من الـ ANR.
  */
 object BootTracker {
 
+    const val ENABLE_DIAGNOSTICS = false
     private const val PREFS_NAME = "boot_diagnostics_prefs"
 
     private fun getSafePrefs(context: Context): android.content.SharedPreferences {
@@ -26,6 +27,7 @@ object BootTracker {
     }
 
     fun logBootEvent(context: Context, action: String) {
+        if (!ENABLE_DIAGNOSTICS) return
         val prefs = getSafePrefs(context)
         val currentCount = prefs.getInt("boot_count", 0) + 1
         val timeStamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
@@ -42,6 +44,7 @@ object BootTracker {
     }
 
     fun updateStage(context: Context, stage: String) {
+        if (!ENABLE_DIAGNOSTICS) return
         val prefs = getSafePrefs(context)
         val timeStamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
         val currentStageLog = prefs.getString("stage_log", "") ?: ""
@@ -55,6 +58,7 @@ object BootTracker {
     }
 
     fun logException(context: Context, tag: String, throwable: Throwable) {
+        if (!ENABLE_DIAGNOSTICS) return
         val prefs = getSafePrefs(context)
         val timeStamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         val stackTrace = throwable.stackTraceToString()
@@ -69,8 +73,8 @@ object BootTracker {
     }
 
     fun clearLog(context: Context) {
+        if (!ENABLE_DIAGNOSTICS) return
         getSafePrefs(context).edit().clear().apply()
-        // حذف ملف الـ Tripwire أيضاً عند مسح السجل
         try {
             val dpContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
                 context.createDeviceProtectedStorageContext() else context
@@ -88,17 +92,36 @@ object BootTracker {
     }
 
     private fun readTripwire(context: Context): String {
+        if (!ENABLE_DIAGNOSTICS) return "DIAGNOSTICS_DISABLED"
         return try {
             val dpContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
                 context.createDeviceProtectedStorageContext() else context
             val file = File(dpContext.filesDir, "boot_tripwire.txt")
-            if (file.exists()) file.readText().trim() else "NO_TRIPWIRE_FILE (BootReceiver لم يُستدعَ أصلاً)"
+            if (file.exists()) file.readText().trim() else "NO_TRIPWIRE_FILE"
         } catch (t: Throwable) {
             "TRIPWIRE_READ_ERROR: ${t.message}"
         }
     }
 
     fun getDiagnostics(context: Context): Map<String, Any> {
+        if (!ENABLE_DIAGNOSTICS) {
+            return mapOf(
+                "boot_count" to 0,
+                "last_action" to "DISABLED",
+                "last_stage" to "DISABLED",
+                "last_timestamp" to "DISABLED",
+                "stage_log" to "DIAGNOSTICS_DISABLED",
+                "exception_trace" to "",
+                "history" to emptyList<String>(),
+                "system_manufacturer" to Build.MANUFACTURER,
+                "system_model" to Build.MODEL,
+                "system_android_version" to Build.VERSION.RELEASE,
+                "system_sdk" to Build.VERSION.SDK_INT,
+                "system_battery_ignored" to true,
+                "system_unlocked" to true,
+                "tripwire" to "DIAGNOSTICS_DISABLED"
+            )
+        }
         val prefs = getSafePrefs(context)
         val bootCount = prefs.getInt("boot_count", 0)
         val lastAction = prefs.getString("last_action", "None") ?: "None"
@@ -115,7 +138,6 @@ object BootTracker {
             }
         }
 
-        // قراءة معلومات النظام الحية
         val manufacturer = Build.MANUFACTURER
         val model = Build.MODEL
         val androidVersion = Build.VERSION.RELEASE
@@ -143,6 +165,7 @@ object BootTracker {
     }
 
     fun exportFormattedDiagnostics(context: Context): String {
+        if (!ENABLE_DIAGNOSTICS) return "Diagnostics system is currently disabled for ANR performance profiling."
         val diag = getDiagnostics(context)
         val report = StringBuilder()
         report.append("=== HWNix SMS Agent Diagnostics Report ===\n")

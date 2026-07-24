@@ -81,14 +81,16 @@ class StatusViewModel(
         }
         val isFirstSetupVal = !sessionManager.isSetupComplete()
         
+        val health = com.hwnix.smsagent.data.local.ServiceHealthMonitor.getHealth()
         val lastSyncTime = sessionManager.getLastSyncSuccessTime()
-        val isOnline = lastSyncTime > 0L && (System.currentTimeMillis() - lastSyncTime < 180000)
-        val connStatus = if (sessionManager.getAuthToken() == null) {
-            "غير متصل"
-        } else if (isOnline) {
-            "Online"
-        } else {
-            "Offline"
+        val isRecentSync = lastSyncTime > 0L && (System.currentTimeMillis() - lastSyncTime < 180000)
+        
+        val connStatus = when {
+            sessionManager.getAuthToken() == null -> "غير متصل"
+            !health.isInternetAvailable -> "غير متصل (لا يوجد إنترنت)"
+            health.overallHealth == com.hwnix.smsagent.data.local.ServiceHealthState.BROKEN -> "غير متصل (الخدمة متوقفة)"
+            isRecentSync && health.isInternetAvailable -> "متصل"
+            else -> "غير متصل"
         }
 
         _uiState.update {
@@ -328,17 +330,22 @@ class StatusViewModel(
     }
 
     fun performFullSync(syncEngine: com.hwnix.smsagent.data.local.SyncEngine) {
+        val health = com.hwnix.smsagent.data.local.ServiceHealthMonitor.getHealth()
+        if (!health.isInternetAvailable) {
+            _uiState.update { it.copy(connectionStatus = "غير متصل (لا يوجد إنترنت)", errorMessage = "⚠️ تعذّر المزامنة: لا يوجد اتصال بالإنترنت.") }
+            return
+        }
+
         _uiState.update { it.copy(connectionStatus = "جاري المزامنة...") }
         viewModelScope.launch {
-            val syncSuccess = withContext(Dispatchers.IO) {
+            withContext(Dispatchers.IO) {
                 try {
                     syncEngine.performFullSync()
-                    true
                 } catch (e: Exception) {
-                    false
+                    /* ignore */
                 }
             }
-            _uiState.update { it.copy(connectionStatus = if (syncSuccess) "Online" else "Offline") }
+            refreshDeviceInfo()
         }
     }
 }

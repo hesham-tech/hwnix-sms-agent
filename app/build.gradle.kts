@@ -4,6 +4,11 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.kapt")
+    id("jacoco")
+}
+
+jacoco {
+    toolVersion = "0.8.11"
 }
 
 android {
@@ -14,8 +19,8 @@ android {
         applicationId = "com.hwnix.smsagent"
         minSdk = 26
         targetSdk = 34
-        versionCode = 48
-        versionName = "1.0.48"
+        versionCode = 50
+        versionName = "1.0.50"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -70,6 +75,19 @@ android {
         }
         jniLibs {
             useLegacyPackaging = true
+        }
+    }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            isReturnDefaultValues = true
+            all {
+                it.extensions.configure<JacocoTaskExtension> {
+                    isIncludeNoLocationClasses = true
+                    excludes = listOf("jdk.internal.*")
+                }
+            }
         }
     }
 
@@ -182,9 +200,34 @@ dependencies {
 
     // Testing
     testImplementation("junit:junit:4.13.2")
+    testImplementation("androidx.test:core-ktx:1.5.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation("app.cash.turbine:turbine:1.0.0")
+    testImplementation("org.robolectric:robolectric:4.11.1")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("io.mockk:mockk-android:1.13.8")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4:$composeVersion")
     debugImplementation("androidx.compose.ui:ui-tooling:$composeVersion")
     debugImplementation("androidx.compose.ui:ui-test-manifest:$composeVersion")
+}
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+    val fileFilter = listOf("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*", "**/*Test*.*", "android/**/*")
+    val debugTree = fileTree("${layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+        exclude(fileFilter)
+    }
+    val mainSrc = "${project.projectDir}/src/main/java"
+    sourceDirectories.setFrom(files(mainSrc))
+    classDirectories.setFrom(files(debugTree))
+    executionData.setFrom(fileTree(layout.buildDirectory.get()) {
+        include("jacoco/testDebugUnitTest.exec")
+    })
 }

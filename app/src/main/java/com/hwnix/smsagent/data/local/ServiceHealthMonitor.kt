@@ -129,7 +129,11 @@ object ServiceHealthMonitor {
             reasonForLastStateChange = newReason
         )
 
-        Log.i(TAG, "Health state updated: ${calculatedHealth.name} | Msg: $formattedMessage | Reason: $newReason")
+        try {
+            Log.i(TAG, "Health state updated: ${calculatedHealth.name} | Msg: $formattedMessage | Reason: $newReason")
+        } catch (e: Throwable) {
+            // Safe fallback for JVM Unit Test environment where android.util.Log is a stub
+        }
 
         if (context != null && old.overallHealth != calculatedHealth) {
             BootTracker.updateStage(context, "HEALTH_CHANGE: ${old.overallHealth.name} ➔ ${calculatedHealth.name} ($newReason)")
