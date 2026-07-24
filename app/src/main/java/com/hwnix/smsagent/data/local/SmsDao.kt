@@ -8,7 +8,7 @@ import androidx.room.Update
 
 @Dao
 interface SmsDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(sms: SmsEntity): Long
 
     @Update
@@ -19,6 +19,9 @@ interface SmsDao {
 
     @Query("SELECT EXISTS(SELECT * FROM sms_cache WHERE messageRef = :messageRef AND direction = 'incoming')")
     suspend fun exists(messageRef: String): Boolean
+
+    @Query("SELECT EXISTS(SELECT * FROM sms_cache WHERE idempotencyKey = :key)")
+    suspend fun existsByIdempotencyKey(key: String): Boolean
 
     @Query("SELECT EXISTS(SELECT * FROM sms_cache WHERE phoneNumber = :phone AND messageBody = :body AND sentAt = :timestamp AND direction = 'incoming')")
     suspend fun existsIncoming(phone: String, body: String, timestamp: Long): Boolean

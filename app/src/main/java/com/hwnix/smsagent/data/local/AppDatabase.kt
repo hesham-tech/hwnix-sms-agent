@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [SmsEntity::class], version = 1, exportSchema = false)
+@Database(entities = [SmsEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun smsDao(): SmsDao
@@ -20,7 +20,8 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "hwnix_sms_local.db"
-                ).build()
+                ).fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }

@@ -40,31 +40,36 @@ class SmsReceiver : BroadcastReceiver() {
 
                         Log.i(TAG, "Incoming SMS from: $sender | SIM: $subscriptionId | Unlocked: $isUnlocked")
 
-                        if (isUnlocked) {
-                            try {
-                                val smsDao = com.hwnix.smsagent.core.di.ServiceLocator.database.smsDao()
-                                val syncEngine = com.hwnix.smsagent.core.di.ServiceLocator.syncEngine
-
-                                val smsEntity = SmsEntity(
-                                    phoneNumber = sender,
-                                    messageBody = fullBody,
-                                    direction = "incoming",
-                                    status = "pending_upload",
-                                    messageRef = UUID.randomUUID().toString(),
-                                    subscriptionId = subscriptionId,
-                                    sentAt = timestamp
-                                )
-                                smsDao.insert(smsEntity)
-                                syncEngine.performFullSync()
-                                Log.i(TAG, "Directly saved incoming SMS to database.")
-                            } catch (dbEx: Exception) {
-                                Log.e(TAG, "Failed database write under unlocked state, falling back to file storage: ${dbEx.message}")
-                                saveToDeviceProtectedStorage(context, sender, fullBody, subscriptionId, timestamp)
+                        // إيقاظ الخدمة الخلفية لضمان استمراريتها ومزامنة الرسالة الصادرة/الواردة
+                        try {
+                            val serviceIntent = Intent(context, com.hwnix.smsagent.data.service.AgentForegroundService::class.java).apply {
+                                putExtra("launcher_source", "SMS_RECEIVER")
                             }
-                        } else {
-                            // وضع Direct Boot (قاعدة البيانات المشفرة والـ Keystore غير متاحين)
-                            // نحفظ الرسالة مؤقتاً كملف JSON في مساحة التخزين المحمية للجهاز (Device Protected Storage)
-                            saveToDeviceProtectedStorage(context, sender, fullBody, subscriptionId, timestamp)
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                context.startForegroundService(serviceIntent)
+                            } else {
+                                context.startService(serviceIntent)
+                            }
+                        } catch (sEx: Exception) {
+                            Log.w(TAG, "Could not start foreground service from SmsReceiver: ${sEx.message}")
+                        }
+
+                        val request = com.hwnix.smsagent.data.local.SmsImportRequest(
+                            phoneNumber = sender,
+                            messageBody = fullBody,
+                            subscriptionId = subscriptionId,
+                            sentAt = timestamp,
+                            source = "SmsReceiver",
+                            pduTimestamp = timestamp
+                        )
+
+                        val imported = com.hwnix.smsagent.data.local.SmsImportManager.importMessage(context, request)
+                        if (imported) {
+                            try {
+                                com.hwnix.smsagent.core.di.ServiceLocator.syncEngine.performFullSync()
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Trigger full sync after SMS import failed: ${e.message}")
+                            }
                         }
                     }
                 } catch (e: Exception) {
@@ -73,34 +78,6 @@ class SmsReceiver : BroadcastReceiver() {
                     pendingResult.finish()
                 }
             }
-        }
-    }
-
-    private fun saveToDeviceProtectedStorage(
-        context: Context,
-        sender: String,
-        body: String,
-        subscriptionId: String,
-        timestamp: Long
-    ) {
-        try {
-            val deviceProtectedContext = context.createDeviceProtectedStorageContext()
-            val directory = java.io.File(deviceProtectedContext.filesDir, "direct_boot_sms")
-            if (!directory.exists()) {
-                directory.mkdirs()
-            }
-            val file = java.io.File(directory, "sms_${System.currentTimeMillis()}_${UUID.randomUUID()}.json")
-            val json = com.google.gson.JsonObject().apply {
-                addProperty("phoneNumber", sender)
-                addProperty("messageBody", body)
-                addProperty("subscriptionId", subscriptionId)
-                addProperty("sentAt", timestamp)
-            }.toString()
-
-            file.writeText(json)
-            Log.i(TAG, "Successfully queued SMS in device protected files: ${file.name}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to write SMS payload to device protected storage: ${e.message}", e)
         }
     }
 }

@@ -1,9 +1,13 @@
 package com.hwnix.smsagent.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "sms_cache")
+@Entity(
+    tableName = "sms_cache",
+    indices = [Index(value = ["idempotencyKey"], unique = true)]
+)
 data class SmsEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val phoneNumber: String,
@@ -13,5 +17,6 @@ data class SmsEntity(
     val messageRef: String, // المعرف الفريد للرسالة محلياً
     val subscriptionId: String, // معرف الشريحة
     val sentAt: Long,
+    val idempotencyKey: String = "", // مفتاح تفرد الرسالة لمنع التكرار
     val createdAt: Long = System.currentTimeMillis()
 )

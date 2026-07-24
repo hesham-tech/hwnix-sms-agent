@@ -164,6 +164,20 @@ object BootTracker {
         report.append("Last Boot Stage: ${diag["last_stage"]}\n")
         report.append("Last Boot Time: ${diag["last_timestamp"]}\n\n")
 
+        report.append("--- SERVICE HEALTH ---\n")
+        val health = ServiceHealthMonitor.getHealth()
+        report.append("Overall Health: ${health.overallHealth.icon} ${health.overallHealth.name} (${health.overallHealth.label})\n")
+        report.append("Service Running: ${health.isServiceRunning}\n")
+        report.append("Foreground Active: ${health.isForegroundActive}\n")
+        report.append("Sync Loop Running: ${health.isSyncLoopRunning}\n")
+        report.append("Last Successful Sync: ${ServiceHealthMonitor.formatTime(health.lastSuccessfulSyncTime)}\n")
+        report.append("Last Heartbeat: ${ServiceHealthMonitor.formatTime(health.lastHeartbeatTime)}\n")
+        report.append("Last Poll: ${ServiceHealthMonitor.formatTime(health.lastPollTime)}\n")
+        report.append("Consecutive Failures: ${health.consecutiveFailures}\n")
+        report.append("Recovery Count: ${health.recoveryCount}\n")
+        report.append("Status Message: ${health.statusMessage}\n")
+        report.append("Reason for Last State Change: ${health.reasonForLastStateChange}\n\n")
+
         report.append("--- DETAILED TIMELINE ---\n")
         report.append("${diag["stage_log"]}\n\n")
 

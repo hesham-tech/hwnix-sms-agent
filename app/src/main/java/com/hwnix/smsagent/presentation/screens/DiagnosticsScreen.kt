@@ -96,6 +96,48 @@ fun DiagnosticsScreen(
             )
             Spacer(modifier = Modifier.height(12.dp))
 
+            // 0. SERVICE HEALTH LIVE CARD
+            val health = com.hwnix.smsagent.data.local.ServiceHealthMonitor.getHealth()
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = when (health.overallHealth) {
+                        com.hwnix.smsagent.data.local.ServiceHealthState.HEALTHY -> MaterialTheme.colorScheme.primaryContainer
+                        com.hwnix.smsagent.data.local.ServiceHealthState.DEGRADED, com.hwnix.smsagent.data.local.ServiceHealthState.WARNING -> MaterialTheme.colorScheme.tertiaryContainer
+                        else -> MaterialTheme.colorScheme.errorContainer
+                    }
+                )
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "صحة الخدمة الحية (SERVICE HEALTH)",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${health.overallHealth.icon} ${health.overallHealth.name}",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("• حالة النظام الحالية: ${health.statusMessage}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    Text("• الخدمة تعمل (Running): ${if (health.isServiceRunning) "نعم ✅" else "لا 🔴"}", style = MaterialTheme.typography.bodySmall)
+                    Text("• الوضع الأمامي (Foreground): ${if (health.isForegroundActive) "نشط ✅" else "معطل 🔴"}", style = MaterialTheme.typography.bodySmall)
+                    Text("• حلقة العمل (Sync Loop): ${if (health.isSyncLoopRunning) "تعمل ✅" else "متوقفة 🔴"}", style = MaterialTheme.typography.bodySmall)
+                    Text("• آخر مزامنة ناجحة: ${com.hwnix.smsagent.data.local.ServiceHealthMonitor.formatTime(health.lastSuccessfulSyncTime)}", style = MaterialTheme.typography.bodySmall)
+                    Text("• آخر نبضة قلب (Heartbeat): ${com.hwnix.smsagent.data.local.ServiceHealthMonitor.formatTime(health.lastHeartbeatTime)}", style = MaterialTheme.typography.bodySmall)
+                    Text("• عدد الأخطاء المتتالية: ${health.consecutiveFailures}", style = MaterialTheme.typography.bodySmall)
+                    Text("• عدد مرات التعافي الذاتي: ${health.recoveryCount}", style = MaterialTheme.typography.bodySmall)
+                    Text("• سبب آخر تغيير للحالة: ${health.reasonForLastStateChange}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                }
+            }
+
             // 1. معلومات العتاد والنظام
             Card(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),

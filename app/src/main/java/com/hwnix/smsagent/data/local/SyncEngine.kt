@@ -60,6 +60,9 @@ class SyncEngine(private val context: Context) {
                 }
                 logAndTrace("TRACE_SYNC_02: Device registration verified")
                 
+                // 0. تفريغ أي رسائل واردة مسجلة في وضع Direct Boot أثناء قفل الشاشة
+                flushDirectBootSmsQueue()
+
                 // 1. فحص صندوق الوارد بالنظام لمزامنة الرسائل الواردة المتراكمة (أثناء توقف التطبيق أو انقطاع الشبكة)
                 logAndTrace("TRACE_SYNC_03: Scanning inbox...")
                 val scanSuccess = runWithBackoff { scanSystemInboxForNewMessages() } ?: false
@@ -251,6 +254,54 @@ class SyncEngine(private val context: Context) {
     }
 
     /**
+     * تفريغ أي رسائل واردة سُجلت كملفات JSON في Device Protected Storage أثناء قفل الشاشة
+     * ونقلها لقاعدة البيانات المحلية بوضع pending_upload لرفعها للسيرفر فوراً.
+     */
+    private suspend fun flushDirectBootSmsQueue(): Unit = withContext(Dispatchers.IO) {
+        val deviceProtectedContext: Context = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            context.createDeviceProtectedStorageContext()
+        } else {
+            context
+        }
+        try {
+            val directory = java.io.File(deviceProtectedContext.filesDir, "direct_boot_sms")
+            if (!directory.exists() || !directory.isDirectory) return@withContext
+            val files = directory.listFiles() ?: return@withContext
+            if (files.isEmpty()) return@withContext
+
+            Log.i(TAG, "Found ${files.size} queued SMS from Direct Boot mode. Importing to Room DB...")
+            files.forEach { file ->
+                try {
+                    val content = file.readText()
+                    val json = com.google.gson.JsonParser.parseString(content).asJsonObject
+                    val phoneNumber = json.get("phoneNumber").asString
+                    val messageBody = json.get("messageBody").asString
+                    val sentAt = json.get("sentAt").asLong
+                    val subscriptionId = json.get("subscriptionId").asString
+                    val androidSmsId = if (json.has("androidSmsId")) json.get("androidSmsId").asString else null
+
+                    val request = com.hwnix.smsagent.data.local.SmsImportRequest(
+                        phoneNumber = phoneNumber,
+                        messageBody = messageBody,
+                        subscriptionId = subscriptionId,
+                        sentAt = sentAt,
+                        source = "DirectBootQueue",
+                        androidSmsId = androidSmsId
+                    )
+
+                    com.hwnix.smsagent.data.local.SmsImportManager.importMessage(context, request)
+                    file.delete()
+                    Log.i(TAG, "Processed Direct Boot SMS file: ${file.name}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error importing Direct Boot SMS file: ${file.name}", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error flushing Direct Boot SMS queue: ${e.message}")
+        }
+    }
+
+    /**
      * فحص صندوق الوارد بالنظام (System Inbox) ورفع أي رسائل واردة جديدة لم تسجل بعد.
      * هذا يضمن عدم ضياع أي رسالة واردة في حال إيقاف التطبيق الإجباري (Force Stop) أو انقطاع الإنترنت.
      */
@@ -273,9 +324,11 @@ class SyncEngine(private val context: Context) {
                 arrayOf(sinceTime.toString()),
                 "date ASC"
             )?.use { cursor ->
+                val idIdx = cursor.getColumnIndex("_id")
                 val addressIdx = cursor.getColumnIndex("address")
                 val bodyIdx = cursor.getColumnIndex("body")
                 val dateIdx = cursor.getColumnIndex("date")
+                val dateSentIdx = cursor.getColumnIndex("date_sent")
                 val subIdIdx = cursor.getColumnIndex("sub_id")
                 val simIdIdx = cursor.getColumnIndex("sim_id")
                 
@@ -287,6 +340,8 @@ class SyncEngine(private val context: Context) {
                         val address = cursor.getString(addressIdx) ?: "unknown"
                         val body = cursor.getString(bodyIdx) ?: ""
                         val date = cursor.getLong(dateIdx)
+                        val dateSent = if (dateSentIdx >= 0) cursor.getLong(dateSentIdx) else null
+                        val smsId = if (idIdx >= 0) cursor.getString(idIdx) else null
                         
                         val subId = if (subIdIdx >= 0) {
                             cursor.getString(subIdIdx) ?: "-1"
@@ -298,22 +353,19 @@ class SyncEngine(private val context: Context) {
                         
                         foundCount++
 
-                        // التحقق من وجود الرسالة مسبقاً بقاعدة البيانات المحلية
-                        val exists = smsDao.existsIncoming(address, body, date)
-                        if (!exists) {
-                            Log.i(TAG, "Found unsynced system SMS from: $address at $date. Inserting to cache...")
-                            sendRemoteLog("TRACE_INBOX_SCAN", "Unsynced SMS detected from: $address, date: $date", -1, -1)
-                            
-                            val smsEntity = SmsEntity(
-                                phoneNumber = address,
-                                messageBody = body,
-                                direction = "incoming",
-                                status = "pending_upload",
-                                messageRef = UUID.randomUUID().toString(),
-                                subscriptionId = subId,
-                                sentAt = date
-                            )
-                            smsDao.insert(smsEntity)
+                        val request = com.hwnix.smsagent.data.local.SmsImportRequest(
+                            phoneNumber = address,
+                            messageBody = body,
+                            subscriptionId = subId,
+                            sentAt = date,
+                            source = "InboxScan",
+                            androidSmsId = smsId,
+                            dateSentTimestamp = dateSent,
+                            dateTimestamp = date
+                        )
+
+                        val imported = com.hwnix.smsagent.data.local.SmsImportManager.importMessage(context, request)
+                        if (imported) {
                             insertedCount++
                         }
                     }
