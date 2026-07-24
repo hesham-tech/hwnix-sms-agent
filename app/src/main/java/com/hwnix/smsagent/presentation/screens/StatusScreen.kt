@@ -97,12 +97,44 @@ fun StatusScreen(
             )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "تشخيصات الإقلاع والنظام (Diagnostics Panel)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "تشخيصات الإقلاع والنظام",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+
+                    Row {
+                        Button(
+                            onClick = {
+                                val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val clipData = android.content.ClipData.newPlainText("HWNix Diagnostics", BootTracker.exportFormattedDiagnostics(context))
+                                clipboardManager.setPrimaryClip(clipData)
+                                android.widget.Toast.makeText(context, "تم نسخ التقرير للحافظة ✅", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text("نسخ", style = MaterialTheme.typography.bodySmall)
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        TextButton(
+                            onClick = {
+                                BootTracker.clearLog(context)
+                                bootDiagnostics = BootTracker.getDiagnostics(context)
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("مسح", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // معلومات النظام المتقدمة
@@ -203,31 +235,6 @@ fun StatusScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Button(
-                        onClick = {
-                            val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            val clipData = android.content.ClipData.newPlainText("HWNix Diagnostics", BootTracker.exportFormattedDiagnostics(context))
-                            clipboardManager.setPrimaryClip(clipData)
-                            android.widget.Toast.makeText(context, "تم نسخ تقرير التشخيص للحافظة ✅", android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                    ) {
-                        Text("نسخ التقرير")
-                    }
-
-                    TextButton(
-                        onClick = {
-                            BootTracker.clearLog(context)
-                            bootDiagnostics = BootTracker.getDiagnostics(context)
-                        }
-                    ) {
-                        Text("مسح السجل")
-                    }
-                }
             }
         }
 

@@ -2,6 +2,8 @@ package com.hwnix.smsagent.presentation.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
@@ -22,6 +24,8 @@ fun AppDrawer(
     localUpdateApk: File?,
     isCheckingUpdate: Boolean,
     updateStatusMessage: String?,
+    currentScreen: String = "status",
+    onNavigateToScreen: (String) -> Unit = {},
     onInstallLocalApk: (File) -> Unit,
     onCheckForUpdate: () -> Unit,
     content: @Composable () -> Unit
@@ -43,7 +47,7 @@ fun AppDrawer(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            "الجهاز",
+                            "الجهاز والخدمة",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -54,11 +58,23 @@ fun AppDrawer(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 NavigationDrawerItem(
-                    label = { Text("حول التطبيق", fontWeight = FontWeight.Medium) },
-                    icon = { Icon(Icons.Filled.Info, contentDescription = null) },
-                    selected = false,
-                    onClick = {}
+                    label = { Text("حالة الجهاز والشرائح", fontWeight = FontWeight.Medium) },
+                    icon = { Icon(Icons.Filled.Dashboard, contentDescription = null) },
+                    selected = currentScreen == "status",
+                    onClick = { onNavigateToScreen("status") },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
                 )
+
+                NavigationDrawerItem(
+                    label = { Text("تقرير التشخيصات (Diagnostics)", fontWeight = FontWeight.Medium) },
+                    icon = { Icon(Icons.Filled.BugReport, contentDescription = null) },
+                    selected = currentScreen == "diagnostics",
+                    onClick = { onNavigateToScreen("diagnostics") },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Divider()
 
                 Card(
                     modifier = Modifier

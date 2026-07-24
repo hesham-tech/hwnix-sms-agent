@@ -245,6 +245,8 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
+                        var currentScreen by remember { mutableStateOf("status") }
+
                         AppDrawer(
                             drawerState = drawerState,
                             currentVersionName = currentVersionName,
@@ -253,24 +255,33 @@ class MainActivity : ComponentActivity() {
                             localUpdateApk = statusState.localUpdateApk,
                             isCheckingUpdate = statusState.isCheckingUpdate,
                             updateStatusMessage = statusState.updateStatusMessage,
+                            currentScreen = currentScreen,
+                            onNavigateToScreen = { screen ->
+                                currentScreen = screen
+                                coroutineScope.launch { drawerState.close() }
+                            },
                             onInstallLocalApk = { statusViewModel.installLocalApk(it) },
                             onCheckForUpdate = { statusViewModel.checkForUpdate(currentVersionCode) }
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
-                                StatusScreen(
-                                    state = statusState,
-                                    onRefresh = { statusViewModel.refreshAll(currentVersionCode) },
-                                    onSyncNowClick = { statusViewModel.performFullSync(syncEngine) },
-                                    onSimSetupClick = { statusViewModel.openSimSetupDialog() },
-                                    onLogoutClick = {
-                                        statusViewModel.logout {
-                                            isLoggedIn = false
+                                if (currentScreen == "diagnostics") {
+                                    com.hwnix.smsagent.presentation.screens.DiagnosticsScreen()
+                                } else {
+                                    StatusScreen(
+                                        state = statusState,
+                                        onRefresh = { statusViewModel.refreshAll(currentVersionCode) },
+                                        onSyncNowClick = { statusViewModel.performFullSync(syncEngine) },
+                                        onSimSetupClick = { statusViewModel.openSimSetupDialog() },
+                                        onLogoutClick = {
+                                            statusViewModel.logout {
+                                                isLoggedIn = false
+                                            }
+                                        },
+                                        onBatteryOptimizeClick = {
+                                            statusViewModel.disableBatteryOptimization()
                                         }
-                                    },
-                                    onBatteryOptimizeClick = {
-                                        statusViewModel.disableBatteryOptimization()
-                                    }
-                                )
+                                    )
+                                }
                                 IconButton(
                                     onClick = { coroutineScope.launch { drawerState.open() } },
                                     modifier = Modifier

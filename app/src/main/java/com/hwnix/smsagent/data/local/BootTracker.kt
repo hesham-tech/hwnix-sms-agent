@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.os.PowerManager
 import androidx.core.os.UserManagerCompat
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,10 +36,9 @@ object BootTracker {
             putString("last_stage", "RECEIVER_ENTERED")
             putString("last_timestamp", timeStamp)
             putString("boot_history_${currentCount}", "[$timeStamp] Action: $action")
-            putString("stage_log", "[$timeStamp] RECEIVER_ENTERED")
-            putString("exception_trace", "") // تصفير الأخطاء السابقة عند البدء الجديد
             apply()
         }
+        updateStage(context, "RECEIVER_ENTERED (Action: $action)")
     }
 
     fun updateStage(context: Context, stage: String) {
@@ -70,6 +70,12 @@ object BootTracker {
 
     fun clearLog(context: Context) {
         getSafePrefs(context).edit().clear().apply()
+        // حذف ملف الـ Tripwire أيضاً عند مسح السجل
+        try {
+            val dpContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+                context.createDeviceProtectedStorageContext() else context
+            File(dpContext.filesDir, "boot_tripwire.txt").delete()
+        } catch (_: Throwable) {}
     }
 
     private fun isBatteryOptimizationsIgnored(context: Context): Boolean {
@@ -78,6 +84,17 @@ object BootTracker {
             pm.isIgnoringBatteryOptimizations(context.packageName)
         } else {
             true
+        }
+    }
+
+    private fun readTripwire(context: Context): String {
+        return try {
+            val dpContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+                context.createDeviceProtectedStorageContext() else context
+            val file = File(dpContext.filesDir, "boot_tripwire.txt")
+            if (file.exists()) file.readText().trim() else "NO_TRIPWIRE_FILE (BootReceiver لم يُستدعَ أصلاً)"
+        } catch (t: Throwable) {
+            "TRIPWIRE_READ_ERROR: ${t.message}"
         }
     }
 
@@ -105,6 +122,7 @@ object BootTracker {
         val sdkInt = Build.VERSION.SDK_INT
         val isBatteryIgnored = isBatteryOptimizationsIgnored(context)
         val isUnlocked = UserManagerCompat.isUserUnlocked(context)
+        val tripwire = readTripwire(context)
 
         return mapOf(
             "boot_count" to bootCount,
@@ -119,7 +137,8 @@ object BootTracker {
             "system_android_version" to androidVersion,
             "system_sdk" to sdkInt,
             "system_battery_ignored" to isBatteryIgnored,
-            "system_unlocked" to isUnlocked
+            "system_unlocked" to isUnlocked,
+            "tripwire" to tripwire
         )
     }
 
@@ -135,6 +154,9 @@ object BootTracker {
         report.append("Android Version: ${diag["system_android_version"]} (SDK ${diag["system_sdk"]})\n")
         report.append("Battery Optimization Ignored: ${diag["system_battery_ignored"]}\n")
         report.append("User Unlocked (After Boot): ${diag["system_unlocked"]}\n\n")
+
+        report.append("--- BOOT RECEIVER TRIPWIRE ---\n")
+        report.append("${diag["tripwire"]}\n\n")
 
         report.append("--- BOOT TRACKER ---\n")
         report.append("Boot Count: ${diag["boot_count"]}\n")

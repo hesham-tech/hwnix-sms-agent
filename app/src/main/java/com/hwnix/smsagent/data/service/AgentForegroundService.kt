@@ -43,7 +43,6 @@ class AgentForegroundService : Service() {
             syncEngine = SyncEngine(applicationContext)
             sessionManager = SessionManager(applicationContext)
             BootTracker.updateStage(applicationContext, "SERVICE_ON_CREATE")
-            createNotificationChannel()
 
             // إعداد WakeLock لمنع تجميد الـ CPU أثناء دورة الـ polling
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -52,7 +51,18 @@ class AgentForegroundService : Service() {
                 "HWNix:AgentWakeLock"
             ).apply { setReferenceCounted(false) }
 
-            // تشغيل startForeground فوراً في onCreate لمنع أي كراش أو تأخر (خلال الـ 5 ثواني المطلوبة من نظام أندرويد)
+            promoteToForeground()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed in onCreate: ${e.message}", e)
+            BootTracker.logException(applicationContext, "AgentForegroundService.onCreate", e)
+        }
+    }
+
+    private fun promoteToForeground() {
+        try {
+            BootTracker.updateStage(applicationContext, "CALLING_START_FOREGROUND")
+            createNotificationChannel()
+
             val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             } else {
@@ -73,9 +83,10 @@ class AgentForegroundService : Service() {
                 .build()
 
             startForeground(NOTIFICATION_ID, notification)
+            BootTracker.updateStage(applicationContext, "START_FOREGROUND_DONE")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed in onCreate: ${e.message}", e)
-            BootTracker.logException(applicationContext, "AgentForegroundService.onCreate", e)
+            Log.e(TAG, "Failed in promoteToForeground: ${e.message}", e)
+            BootTracker.logException(applicationContext, "AgentForegroundService.promoteToForeground", e)
         }
     }
 
@@ -84,6 +95,7 @@ class AgentForegroundService : Service() {
             val source = intent?.getStringExtra("launcher_source") ?: "UNKNOWN"
             Log.i(TAG, "Starting Agent Foreground Service (Source: $source)...")
             BootTracker.updateStage(applicationContext, "SERVICE_ON_START_COMMAND (Source: $source)")
+            promoteToForeground()
             startPeriodicSyncLoop()
         } catch (e: Exception) {
             Log.e(TAG, "Failed in onStartCommand: ${e.message}", e)
@@ -147,6 +159,7 @@ class AgentForegroundService : Service() {
         Log.i(TAG, "Task removed. Scheduling service restart...")
         val restartServiceIntent = Intent(applicationContext, this.javaClass).apply {
             setPackage(packageName)
+            putExtra("launcher_source", "ALARM_MANAGER_RESTART")
         }
         val pendingIntent = PendingIntent.getService(
             applicationContext,

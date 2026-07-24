@@ -22,7 +22,9 @@ class AgentRestartWorker(
 
         if (hasSession) {
             try {
-                val serviceIntent = Intent(applicationContext, AgentForegroundService::class.java)
+                val serviceIntent = Intent(applicationContext, AgentForegroundService::class.java).apply {
+                    putExtra("launcher_source", "RESTART_WORKER")
+                }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     applicationContext.startForegroundService(serviceIntent)
                 } else {
