@@ -27,6 +27,8 @@ class SyncEngine(private val context: Context) {
 
     companion object {
         private const val TAG = "SyncEngine"
+        // مفتاح تفعيل/تعطيل سحب وإرسال الأوامر الصادرة من السيرفر مؤقتاً لتوفير الطاقة الحاد بدون حذف الكود
+        const val ENABLE_PULL_SERVER_COMMANDS = false
     }
 
     /**
@@ -73,10 +75,14 @@ class SyncEngine(private val context: Context) {
                 val uploadSuccess = runWithBackoff { uploadPendingIncomingSms() } ?: false
                 logAndTrace("TRACE_SYNC_06: Upload finished ($uploadSuccess)")
                 
-                // 2. سحب ومعالجة الأوامر المعلقة من السيرفر
-                logAndTrace("TRACE_SYNC_07: Pulling server commands...")
-                val pullSuccess = runWithBackoff { pullAndProcessCommands() } ?: false
-                logAndTrace("TRACE_SYNC_08: Commands processed ($pullSuccess)")
+                // 2. سحب ومعالجة الأوامر المعلقة من السيرفر (معطلة بمفتاح التشغيل لتوفير الطاقة)
+                if (ENABLE_PULL_SERVER_COMMANDS) {
+                    logAndTrace("TRACE_SYNC_07: Pulling server commands...")
+                    val pullSuccess = runWithBackoff { pullAndProcessCommands() } ?: false
+                    logAndTrace("TRACE_SYNC_08: Commands processed ($pullSuccess)")
+                } else {
+                    logAndTrace("TRACE_SYNC_07: Server commands pull DISABLED via Feature Flag (Zero Battery Drain)")
+                }
                 
                 // 3. إرسال نبضة قلب لتحديث التواجد وسحب الإعدادات
                 logAndTrace("TRACE_SYNC_09: Sending heartbeat...")

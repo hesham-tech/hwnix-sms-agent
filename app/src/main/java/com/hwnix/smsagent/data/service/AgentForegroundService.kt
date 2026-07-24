@@ -22,7 +22,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// خدمة الخلفية الدائمة — تستخدم WakeLock لضمان عمل الـ polling على Android 9 وما دونه
+/**
+ * تعليق عربي مختصر: خدمة خلفية فائقة التوفير للبطارية تعتمد على الأحداث المباشرة وكبح تحديثات الإشعارات لمنع تنبيه استنزاف الطاقة.
+ */
 class AgentForegroundService : Service() {
 
     private val serviceJob = Job()
@@ -31,10 +33,16 @@ class AgentForegroundService : Service() {
     private lateinit var sessionManager: SessionManager
     private var wakeLock: PowerManager.WakeLock? = null
 
+    private var lastNotificationTitle: String? = null
+    private var lastNotificationText: String? = null
+    private var lastNotificationTime: Long = 0L
+
     companion object {
         private const val TAG = "AgentService"
         private const val CHANNEL_ID = "hwnix_agent_foreground_channel"
         private const val NOTIFICATION_ID = 2026
+        private const val NOTIFICATION_THROTTLE_MS = 15 * 60 * 1000L // تحديث الإشعار كل 15 دقيقة فقط إذا لم تتغير الحالة
+        private const val DEFAULT_IDLE_POLL_INTERVAL_SEC = 60L // مزامنة خفيفة كل 60 ثانية لحماية البطارية ومودم الـ 4G
     }
 
     enum class AgentServiceState {
@@ -87,7 +95,6 @@ class AgentForegroundService : Service() {
         try {
             updateServiceState(AgentServiceState.CREATED)
 
-            // إعداد WakeLock لمنع تجميد الـ CPU أثناء دورة الـ polling
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             wakeLock = pm.newWakeLock(
                 PowerManager.PARTIAL_WAKE_LOCK,
@@ -129,7 +136,7 @@ class AgentForegroundService : Service() {
                         reason = "عودة الاتصال بالإنترنت",
                         context = applicationContext
                     )
-                    updateLiveNotification()
+                    updateLiveNotification(force = true)
 
                     serviceScope.launch {
                         try {
@@ -140,8 +147,6 @@ class AgentForegroundService : Service() {
                             }
                         } catch (e: Exception) {
                             Log.w(TAG, "Immediate sync after network restore failed: ${e.message}")
-                        } finally {
-                            updateLiveNotification()
                         }
                     }
                 }
@@ -156,7 +161,7 @@ class AgentForegroundService : Service() {
                         reason = "انقطاع الاتصال بالإنترنت",
                         context = applicationContext
                     )
-                    updateLiveNotification()
+                    updateLiveNotification(force = true)
                 }
             }
 
@@ -181,10 +186,26 @@ class AgentForegroundService : Service() {
 
     private var isForegroundPromoted = false
 
-    private fun updateLiveNotification() {
+    /**
+     * تحديث ذكي ومكبوح لـ Notification الكشف لمنع تنبيه استنزاف الطاقة من أنظمة OEM (Huawei/Honor Phone Manager)
+     */
+    private fun updateLiveNotification(force: Boolean = false) {
         try {
             createNotificationChannel()
             val health = com.hwnix.smsagent.data.local.ServiceHealthMonitor.getHealth()
+
+            val notificationTitle = "${health.overallHealth.icon} ${health.overallHealth.label}"
+            val notificationText = health.statusMessage
+            val now = System.currentTimeMillis()
+
+            // كبح استدعاء manager.notify() إذا لم تتغير الحالة ولم ينقضِ وقت التهدئة (15 دقيقة)
+            if (!force && isForegroundPromoted &&
+                notificationTitle == lastNotificationTitle &&
+                notificationText == lastNotificationText &&
+                (now - lastNotificationTime) < NOTIFICATION_THROTTLE_MS
+            ) {
+                return
+            }
 
             val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
@@ -196,9 +217,6 @@ class AgentForegroundService : Service() {
             val pendingIntent = PendingIntent.getActivity(
                 this, 0, notificationIntent, pendingIntentFlags
             )
-
-            val notificationTitle = "${health.overallHealth.icon} ${health.overallHealth.label}"
-            val notificationText = health.statusMessage
 
             val builder = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(notificationTitle)
@@ -221,6 +239,10 @@ class AgentForegroundService : Service() {
                 val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 manager.notify(NOTIFICATION_ID, notification)
             }
+
+            lastNotificationTitle = notificationTitle
+            lastNotificationText = notificationText
+            lastNotificationTime = now
         } catch (e: Exception) {
             Log.e(TAG, "Failed in updateLiveNotification: ${e.message}", e)
             BootTracker.logException(applicationContext, "AgentForegroundService.updateLiveNotification", e)
@@ -229,12 +251,11 @@ class AgentForegroundService : Service() {
 
     private fun promoteToForeground() {
         if (isForegroundPromoted) {
-            Log.d(TAG, "Foreground already active. Refreshing notification status.")
-            updateLiveNotification()
+            Log.d(TAG, "Foreground already active.")
             return
         }
         BootTracker.updateStage(applicationContext, "CALLING_START_FOREGROUND")
-        updateLiveNotification()
+        updateLiveNotification(force = true)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -277,7 +298,7 @@ class AgentForegroundService : Service() {
                             reason = "انتظار فك قفل الشاشة (Direct Boot)",
                             context = applicationContext
                         )
-                        updateLiveNotification()
+                        updateLiveNotification(force = true)
                         wasLockedWaitingLogged = true
                     }
                     delay(5_000L)
@@ -289,13 +310,6 @@ class AgentForegroundService : Service() {
                     wasLockedWaitingLogged = false
                 }
 
-                // تنشيط WakeLock أثناء دورة المزامنة لضمان اكتمالها على Android 9
-                try {
-                    wakeLock?.acquire(60_000L) // timeout 60 ثانية كحد أقصى
-                } catch (e: Exception) {
-                    Log.w(TAG, "WakeLock acquire failed: ${e.message}")
-                }
-
                 try {
                     Log.d(TAG, "Periodic sync triggered...")
                     syncEngine.performFullSync()
@@ -305,14 +319,15 @@ class AgentForegroundService : Service() {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     Log.e(TAG, "Error in sync loop: ${e.message}")
                     com.hwnix.smsagent.data.local.ServiceHealthMonitor.recordFailure(e.message ?: "خطأ بالدورة", applicationContext)
-                } finally {
-                    try {
-                        if (wakeLock?.isHeld == true) wakeLock?.release()
-                    } catch (e: Exception) { /* ignore */ }
-                    updateLiveNotification()
                 }
 
-                val intervalSeconds: Long = try { (sessionManager.getPollingInterval() as Number).toLong() } catch (_: Exception) { 10L }
+                val intervalSeconds: Long = try {
+                    val configured = (sessionManager.getPollingInterval() as Number).toLong()
+                    if (configured < DEFAULT_IDLE_POLL_INTERVAL_SEC) DEFAULT_IDLE_POLL_INTERVAL_SEC else configured
+                } catch (_: Exception) {
+                    DEFAULT_IDLE_POLL_INTERVAL_SEC
+                }
+
                 Log.d(TAG, "Next sync in ${intervalSeconds}s")
                 delay(intervalSeconds * 1000L)
             }
@@ -378,4 +393,3 @@ class AgentForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
-
