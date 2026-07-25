@@ -417,11 +417,14 @@ class SyncEngine(private val context: Context) {
                 null
             }
 
+            val contactName = com.hwnix.cash.data.local.SmsImportManager.getContactName(context, sms.phoneNumber)
+
             val obj = JsonObject().apply {
                 addProperty("subscription_id", sms.subscriptionId)
                 addProperty("phone_number", sms.phoneNumber)
                 addProperty("message_body", sms.messageBody)
                 addProperty("message_ref", sms.messageRef)
+                if (!contactName.isNullOrEmpty()) addProperty("contact_name", contactName)
                 if (sentAtIso != null) addProperty("sent_at", sentAtIso)
             }
 

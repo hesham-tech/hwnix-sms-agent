@@ -26,6 +26,28 @@ object SmsImportManager {
     private const val TAG = "SmsImportManager"
     private val importMutex = Mutex()
 
+    fun getContactName(context: Context, phoneNumber: String): String? {
+        if (phoneNumber.isBlank() || phoneNumber.any { it.isLetter() }) return null
+        return try {
+            val uri = android.net.Uri.withAppendedPath(
+                android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                android.net.Uri.encode(phoneNumber)
+            )
+            context.contentResolver.query(
+                uri,
+                arrayOf(android.provider.ContactsContract.PhoneLookup.DISPLAY_NAME),
+                null, null, null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIdx = cursor.getColumnIndex(android.provider.ContactsContract.PhoneLookup.DISPLAY_NAME)
+                    if (nameIdx >= 0) cursor.getString(nameIdx) else null
+                } else null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     fun determineSentAt(pduTimestamp: Long?, dateSent: Long?, date: Long?, fallbackSentAt: Long): Long {
         val selected = when {
             pduTimestamp != null && pduTimestamp > 0 -> pduTimestamp
