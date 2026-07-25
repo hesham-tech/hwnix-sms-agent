@@ -14,6 +14,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
+    <!-- أذونات المنبهات الدقيقة لإيقاظ الخدمة (System Watchdog Alarms) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    
     <!-- أذونات الخدمات الخلفية والنبضات -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
@@ -29,7 +33,7 @@
 
 
     <application
-        android:name=".SmsAgentApplication"
+        android:name=".HwnixCashApplication"
         android:extractNativeLibs="true"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -38,14 +42,14 @@
         android:roundIcon="@drawable/ic_app_logo"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SmsAgent"
+        android:theme="@style/Theme.HwnixCash"
         tools:targetApi="34">
         
         <activity
             android:name=".presentation.MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Theme.SmsAgent">
+            android:theme="@style/Theme.HwnixCash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -55,7 +59,7 @@
         <!-- مزود الملفات لمشاركة ملف الـ APK المحدث وتثبيته -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.hwnix.smsagent.fileprovider"
+            android:authorities="com.hwnix.cash.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
@@ -97,8 +101,8 @@
             android:enabled="true"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.hwnix.smsagent.SMS_SENT" />
-                <action android:name="com.hwnix.smsagent.SMS_DELIVERED" />
+                <action android:name="com.hwnix.cash.SMS_SENT" />
+                <action android:name="com.hwnix.cash.SMS_DELIVERED" />
             </intent-filter>
         </receiver>
 
@@ -111,11 +115,12 @@
             </intent-filter>
         </service>
 
-        <!-- خدمة المراقبة وإيقاظ الهاتف في الخلفية -->
+        <!-- خدمة المراقبة وإيقاظ الهاتف في الخلفية المستمرة بدون توقف عند السحب -->
         <service
             android:name=".data.service.AgentForegroundService"
             android:enabled="true"
             android:exported="false"
+            android:stopWithTask="false"
             android:foregroundServiceType="specialUse"
             android:directBootAware="true"
             tools:targetApi="34" />
