@@ -107,7 +107,7 @@ fun StatusScreen(
                             modifier = Modifier.padding(end = 8.dp)
                         )
                         Text(
-                            text = "حماية الخدمة لـ ${OEMAutostartHelper.getDeviceManufacturer().uppercase()}",
+                            text = "حماية التشغيل لهواتف ${OEMAutostartHelper.getDeviceManufacturer().uppercase()}",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -115,7 +115,7 @@ fun StatusScreen(
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "لتستيقظ الخدمة تلقائياً وتعمل حتى بعد إغلاق التطبيق في ${OEMAutostartHelper.getDeviceManufacturer()}:",
+                        text = "لتجنب إيقاف البرنامج وضمان استمرار عمله حتى بعد إغلاقه في ${OEMAutostartHelper.getDeviceManufacturer()}:",
                         style = MaterialTheme.typography.bodySmall
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -143,7 +143,7 @@ fun StatusScreen(
 
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "💡 نصيحة: قم بقفل التطبيق 🔒 من قائمة التطبيقات الحديثة (Recent Apps) لمنع النظام من إيقافه.",
+                        text = "💡 نصيحة: قم بقفل التطبيق 🔒 من قائمة التطبيقات الحديثة لضمان استمرار عمله دون انقطاع.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -177,15 +177,15 @@ fun StatusScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (state.isBatteryOptimized) "تحسين البطارية: مقيّد ⚠️" else "تحسين البطارية: مُعطَّل ✅",
+                            text = if (state.isBatteryOptimized) "تحسين البطارية: مفعّل ⚠️" else "تحسين البطارية: مُعطَّل ✅",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = if (state.isBatteryOptimized)
-                                "قد يؤثر على عمل الخدمة في الخلفية"
+                                "قد يتسبب في إيقاف البرنامج تلقائياً"
                             else
-                                "الخدمة تعمل بكامل طاقتها في الخلفية",
+                                "البرنامج يعمل بنجاح وبدون أي قيود",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
