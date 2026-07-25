@@ -226,7 +226,7 @@ class AgentForegroundService : Service() {
                 .setOngoing(true)
                 .setColor(health.overallHealth.colorHex)
                 .setColorized(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
             val notification = builder.build()
 
@@ -339,8 +339,11 @@ class AgentForegroundService : Service() {
             val serviceChannel = NotificationChannel(
                 CHANNEL_ID,
                 "HWNix Gateway Service Channel",
-                NotificationManager.IMPORTANCE_LOW
-            )
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                setShowBadge(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(serviceChannel)
         }
@@ -391,13 +394,15 @@ class AgentForegroundService : Service() {
             } else {
                 alarmService.setExact(android.app.AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
             }
-            val alarmLog = "FORENSIC_EVENT: ALARM_CLOCK_RESTART_SCHEDULED | Delay: 500ms"
+            AgentRestartWorker.enqueue(applicationContext)
+            val alarmLog = "FORENSIC_EVENT: ALARM_CLOCK_RESTART_SCHEDULED | Delay: 500ms | WorkManager Enqueued"
             Log.i(TAG, alarmLog)
             BootTracker.updateStage(applicationContext, alarmLog)
         } catch (e: Exception) {
             val alarmErr = "FORENSIC_EVENT: ALARM_SCHEDULE_FAILED | Err: ${e.message}"
             Log.e(TAG, alarmErr)
             BootTracker.updateStage(applicationContext, alarmErr)
+            try { AgentRestartWorker.enqueue(applicationContext) } catch (_: Exception) {}
         }
         super.onTaskRemoved(rootIntent)
     }
