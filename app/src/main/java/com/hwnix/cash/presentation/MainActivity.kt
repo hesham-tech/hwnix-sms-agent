@@ -150,8 +150,14 @@ class MainActivity : ComponentActivity() {
                                     statusViewModel.disableBatteryOptimization()
                                 }
 
-                                // التحقق من وجود تحديث جديد عند فتح التطبيق
+                                // التحقق من وجود تحديث جديد وتنشيط المزامنة الأولية عند فتح التطبيق
                                 try {
+                                    if (sessionManager.getAuthToken() != null) {
+                                        sessionManager.saveLastSyncSuccessTime(System.currentTimeMillis())
+                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                            syncEngine.performFullSync()
+                                        }
+                                    }
                                     val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
                                     val currentVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                                         packageInfo.longVersionCode.toInt()

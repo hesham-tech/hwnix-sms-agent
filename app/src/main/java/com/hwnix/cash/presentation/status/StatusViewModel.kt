@@ -83,13 +83,13 @@ class StatusViewModel(
         
         val health = com.hwnix.cash.data.local.ServiceHealthMonitor.getHealth()
         val lastSyncTime = sessionManager.getLastSyncSuccessTime()
-        val isRecentSync = lastSyncTime > 0L && (System.currentTimeMillis() - lastSyncTime < 180000)
+        val isRecentSync = lastSyncTime > 0L || sessionManager.getAuthToken() != null
         
         val connStatus = when {
             sessionManager.getAuthToken() == null -> "غير متصل"
             !health.isInternetAvailable -> "غير متصل (لا يوجد إنترنت)"
             health.overallHealth == com.hwnix.cash.data.local.ServiceHealthState.BROKEN -> "غير متصل (الخدمة متوقفة)"
-            isRecentSync && health.isInternetAvailable -> "متصل"
+            health.isInternetAvailable -> "متصل"
             else -> "غير متصل"
         }
 

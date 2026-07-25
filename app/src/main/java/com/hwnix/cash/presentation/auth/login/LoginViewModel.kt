@@ -64,6 +64,11 @@ class LoginViewModel(
 
             val result = loginUseCase.execute(state.loginInput.trim(), state.passwordInput.trim())
             if (result.isSuccess) {
+                sessionManager.saveLastSyncSuccessTime(System.currentTimeMillis())
+                sessionManager.markSetupComplete()
+                try {
+                    com.hwnix.cash.core.di.ServiceLocator.syncEngine.performFullSync()
+                } catch (_: Exception) {}
                 _uiState.update { it.copy(isLoading = false, isSuccess = true) }
             } else {
                 _uiState.update { 
