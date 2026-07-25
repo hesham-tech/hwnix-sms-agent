@@ -224,11 +224,15 @@ class AgentForegroundService : Service() {
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setLocalOnly(true)
                 .setColor(health.overallHealth.colorHex)
                 .setColorized(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
 
-            val notification = builder.build()
+            val notification = builder.build().apply {
+                flags = flags or android.app.Notification.FLAG_ONGOING_EVENT or android.app.Notification.FLAG_NO_CLEAR
+            }
 
             if (!isForegroundPromoted) {
                 startForeground(NOTIFICATION_ID, notification)

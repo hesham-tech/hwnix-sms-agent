@@ -101,6 +101,7 @@ class MainActivity : ComponentActivity() {
                                 android.Manifest.permission.SEND_SMS,
                                 android.Manifest.permission.READ_SMS,
                                 android.Manifest.permission.READ_PHONE_STATE,
+                                android.Manifest.permission.READ_CONTACTS,
                                 android.Manifest.permission.POST_NOTIFICATIONS
                             )
                         )
