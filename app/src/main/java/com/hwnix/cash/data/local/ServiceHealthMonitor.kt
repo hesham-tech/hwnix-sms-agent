@@ -78,15 +78,13 @@ object ServiceHealthMonitor {
             !newInternetAvailable -> ServiceHealthState.WARNING // تحذير: لا يوجد اتصال بالإنترنت
             newFailures >= 3 -> ServiceHealthState.BROKEN
             newFailures >= 1 -> ServiceHealthState.DEGRADED
-            timeSinceLastSync > 180 -> ServiceHealthState.WARNING // لم تتم المزامنة لأكثر من 3 دقائق
-            timeSinceLastSync > 90 -> ServiceHealthState.DEGRADED // لم تتم المزامنة لأكثر من دقيقة ونصف
-            newLastSync > 0 -> ServiceHealthState.HEALTHY
-            else -> ServiceHealthState.STARTING
+            timeSinceLastSync > 600 && newLastSync > 0 -> ServiceHealthState.WARNING // لم تتم المزامنة لأكثر من 10 دقائق
+            else -> ServiceHealthState.HEALTHY
         }
 
         val secSinceSync = if (newLastSync > 0) (now - newLastSync) / 1000 else 0
         val lastSyncStr = when {
-            newLastSync <= 0 -> "لم تتم المزامنة بعد"
+            newLastSync <= 0 -> "جاري المزامنة الأولى"
             secSinceSync < 5 -> "منذ لحظات"
             secSinceSync < 60 -> "منذ $secSinceSync ثانية"
             else -> "منذ ${secSinceSync / 60} دقيقة"
@@ -94,19 +92,16 @@ object ServiceHealthMonitor {
 
         val formattedMessage = when {
             !newInternetAvailable -> {
-                "المزامنة متوقفة — لا يوجد اتصال بالإنترنت (آخر مزامنة $lastSyncStr)"
+                "المزامنة متوقفة — لا يوجد اتصال بالإنترنت"
             }
             calculatedHealth == ServiceHealthState.HEALTHY -> {
-                "آخر مزامنة ناجحة $lastSyncStr"
+                "متصل — الخدمة تعمل بنجاح ($lastSyncStr)"
             }
             calculatedHealth == ServiceHealthState.DEGRADED -> {
-                "تأخر المزامنة (فشل $newFailures) — محاولة استعادة..."
+                "جاري إعادة الاتصال والمزامنة..."
             }
             calculatedHealth == ServiceHealthState.WARNING -> {
-                "تأخر الاستجابة — جاري إعادة الاتصال..."
-            }
-            calculatedHealth == ServiceHealthState.BROKEN -> {
-                "الخدمة غير مستقرة — جاري التعافي التلقائي..."
+                "تأخر المزامنة — جاري المحاولة تلقائياً"
             }
             else -> {
                 "جاري تهيئة خدمات بوابة الرسائل..."

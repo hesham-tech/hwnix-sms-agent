@@ -153,6 +153,31 @@ fun DiagnosticsScreen(
                 }
             }
 
+            // 1.5 تقرير سحب وإغلاق التطبيق من التطبيقات المفتوحة (Task Removal Report)
+            val taskRemovedCount = (bootDiagnostics["task_removed_count"] as? Number)?.toInt() ?: 0
+            val lastTaskRemovedTime = bootDiagnostics["last_task_removed_time"] as? String ?: "لا يوجد"
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (taskRemovedCount > 0)
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    else
+                        MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "تقرير سحب وإغلاق التطبيق من التطبيقات المفتوحة (Task Removal):",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("• عدد مرات إغلاق التطبيق بالسحب: $taskRemovedCount", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    Text("• توقيت آخر إغلاق بالسحب: $lastTaskRemovedTime", style = MaterialTheme.typography.bodySmall)
+                    Text("• آلية التعافي: يتم مجابهة الإغلاق تلقائياً عبر AlarmManager + WorkManager فوراً ✅", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+
             // 2. Boot Receiver Tripwire
             val tripwire = bootDiagnostics["tripwire"] as? String ?: ""
             Card(

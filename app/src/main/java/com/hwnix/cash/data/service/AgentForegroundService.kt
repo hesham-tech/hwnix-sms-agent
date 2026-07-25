@@ -361,6 +361,7 @@ class AgentForegroundService : Service() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         val forensicLog = "FORENSIC_EVENT: SERVICE_ON_TASK_REMOVED | Action: ${rootIntent?.action ?: "N/A"} | Time: ${System.currentTimeMillis()}"
         Log.i(TAG, forensicLog)
+        BootTracker.recordTaskRemoved(applicationContext)
         BootTracker.updateStage(applicationContext, forensicLog)
 
         val restartServiceIntent = Intent(applicationContext, this.javaClass).apply {

@@ -14,7 +14,7 @@ import java.util.Locale
  */
 object BootTracker {
 
-    const val ENABLE_DIAGNOSTICS = false
+    const val ENABLE_DIAGNOSTICS = true
     private const val PREFS_NAME = "boot_diagnostics_prefs"
 
     private fun getSafePrefs(context: Context): android.content.SharedPreferences {
@@ -24,6 +24,18 @@ object BootTracker {
             context
         }
         return safeContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    fun recordTaskRemoved(context: Context) {
+        val prefs = getSafePrefs(context)
+        val currentCount = prefs.getInt("task_removed_count", 0) + 1
+        val timeStamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        prefs.edit().apply {
+            putInt("task_removed_count", currentCount)
+            putString("last_task_removed_time", timeStamp)
+            apply()
+        }
+        updateStage(context, "⚠️ [TASK_REMOVED] المستخدم قام بسحب وإغلاق التطبيق من قائمة التطبيقات المفتوحة عند $timeStamp (إعادة تشغيل تلقائية نشطة)")
     }
 
     fun logBootEvent(context: Context, action: String) {
@@ -138,6 +150,9 @@ object BootTracker {
             }
         }
 
+        val taskRemovedCount = prefs.getInt("task_removed_count", 0)
+        val lastTaskRemovedTime = prefs.getString("last_task_removed_time", "لا يوجد") ?: "لا يوجد"
+
         val manufacturer = Build.MANUFACTURER
         val model = Build.MODEL
         val androidVersion = Build.VERSION.RELEASE
@@ -154,6 +169,8 @@ object BootTracker {
             "stage_log" to stageLog,
             "exception_trace" to exceptionTrace,
             "history" to historyList,
+            "task_removed_count" to taskRemovedCount,
+            "last_task_removed_time" to lastTaskRemovedTime,
             "system_manufacturer" to manufacturer,
             "system_model" to model,
             "system_android_version" to androidVersion,
@@ -177,6 +194,10 @@ object BootTracker {
         report.append("Android Version: ${diag["system_android_version"]} (SDK ${diag["system_sdk"]})\n")
         report.append("Battery Optimization Ignored: ${diag["system_battery_ignored"]}\n")
         report.append("User Unlocked (After Boot): ${diag["system_unlocked"]}\n\n")
+
+        report.append("--- TASK REMOVAL REPORT ---\n")
+        report.append("Task Removed Count: ${diag["task_removed_count"]}\n")
+        report.append("Last Task Removed Time: ${diag["last_task_removed_time"]}\n\n")
 
         report.append("--- BOOT RECEIVER TRIPWIRE ---\n")
         report.append("${diag["tripwire"]}\n\n")
