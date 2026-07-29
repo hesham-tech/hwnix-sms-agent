@@ -1,17 +1,24 @@
 package com.hwnix.cash.presentation.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PointOfSale
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,105 +40,143 @@ fun AppDrawer(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet(modifier = Modifier.fillMaxWidth(0.78f)) {
+            ModalDrawerSheet(
+                modifier = Modifier.fillMaxWidth(0.82f),
+                drawerContainerColor = MaterialTheme.colorScheme.surface
+            ) {
+                // Header Banner
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary
+                                )
+                            )
+                        )
                         .padding(24.dp)
                 ) {
                     Column {
-                        Text(
-                            "HWNix SMS Agent",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            "الجهاز والخدمة",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Divider()
-                Spacer(modifier = Modifier.height(8.dp))
-
-                NavigationDrawerItem(
-                    label = { Text("حالة الجهاز والشرائح", fontWeight = FontWeight.Medium) },
-                    icon = { Icon(Icons.Filled.Dashboard, contentDescription = null) },
-                    selected = currentScreen == "status",
-                    onClick = { onNavigateToScreen("status") },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
-                )
-
-                NavigationDrawerItem(
-                    label = { Text("تقرير التشخيصات (Diagnostics)", fontWeight = FontWeight.Medium) },
-                    icon = { Icon(Icons.Filled.BugReport, contentDescription = null) },
-                    selected = currentScreen == "diagnostics",
-                    onClick = { onNavigateToScreen("diagnostics") },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-                Divider()
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("الإصدار الحالي: ", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                            Text(currentVersionName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("كود الإصدار: ", style = MaterialTheme.typography.bodySmall)
-                            Text("$currentVersionCode", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        if (localUpdateApk != null) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("إصدار متوفر للتثبيت: ", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
-                                Text(localUpdateVersionName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                            Icon(
+                                imageVector = Icons.Filled.PointOfSale,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    "HWNix Cash",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    "بوابة كاش ونقاط البيع",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.85f)
+                                )
                             }
                         }
                     }
                 }
 
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Navigation Items
+                NavigationDrawerItem(
+                    label = { Text("لوحة التحكم وحالة الخدمة", fontWeight = FontWeight.SemiBold) },
+                    icon = { Icon(Icons.Filled.Dashboard, contentDescription = null) },
+                    selected = currentScreen == "status",
+                    onClick = { onNavigateToScreen("status") },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                )
+
+                NavigationDrawerItem(
+                    label = { Text("تقرير التشخيصات (Diagnostics)", fontWeight = FontWeight.SemiBold) },
+                    icon = { Icon(Icons.Filled.BugReport, contentDescription = null) },
+                    selected = currentScreen == "diagnostics",
+                    onClick = { onNavigateToScreen("diagnostics") },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Version Info Card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("الإصدار الحالي: ", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = "v$currentVersionName ($currentVersionCode)",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        if (localUpdateApk != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("إصدار جديد جاهز: ", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                                Text("v$localUpdateVersionName", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 if (localUpdateApk != null) {
                     Button(
                         onClick = { onInstallLocalApk(localUpdateApk) },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = Color.White
                         ),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .padding(horizontal = 16.dp)
                     ) {
                         Icon(Icons.Filled.SystemUpdate, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                         Text("تثبيت التحديث (v$localUpdateVersionName)")
                     }
                 } else {
-                    Button(
+                    OutlinedButton(
                         onClick = onCheckForUpdate,
                         enabled = !isCheckingUpdate,
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .padding(horizontal = 16.dp)
                     ) {
                         if (isCheckingUpdate) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("جاري الفحص...")
                         } else {
-                            Icon(Icons.Filled.SystemUpdate, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                             Text("التحقق من التحديثات")
                         }
                     }
@@ -140,22 +185,26 @@ fun AppDrawer(
                 if (updateStatusMessage != null) {
                     Text(
                         text = updateStatusMessage,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
-                Divider()
-                Text(
-                    "HWNix © 2025",
+                HorizontalDivider()
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "HWNix Cash Platform © 2026",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
             }
         }
     ) {
