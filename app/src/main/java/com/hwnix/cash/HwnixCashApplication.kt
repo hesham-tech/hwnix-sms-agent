@@ -21,12 +21,31 @@ class HwnixCashApplication : Application() {
         com.hwnix.cash.core.di.ServiceLocator.initialize(this)
         Log.i("HwnixCashApp", "HWNix Cash Agent Application Initialized.")
         
+        ensureAgentServiceRunning()
+
         val isUnlocked = androidx.core.os.UserManagerCompat.isUserUnlocked(this)
         if (isUnlocked) {
             scheduleRestartWorker()
             processDirectBootSms()
         } else {
-            Log.i("SmsAgentApp", "Application started in LOCKED state (Direct Boot). Postponing initialization.")
+            Log.i("HwnixCashApp", "Application started in LOCKED state (Direct Boot). Postponing initialization.")
+        }
+    }
+
+    private fun ensureAgentServiceRunning() {
+        try {
+            val serviceIntent = android.content.Intent(this, com.hwnix.cash.data.service.AgentForegroundService::class.java).apply {
+                putExtra("launcher_source", "APP_ON_CREATE")
+            }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+            Log.i("HwnixCashApp", "AgentForegroundService start requested from Application.onCreate")
+        } catch (e: Exception) {
+            Log.e("HwnixCashApp", "Failed to start service directly from Application.onCreate, enqueuing worker: ${e.message}")
+            AgentRestartWorker.enqueue(this)
         }
     }
 

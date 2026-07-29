@@ -34,28 +34,21 @@ class AgentRestartWorker(
     }
 
     override suspend fun doWork(): Result {
-        Log.i("AgentRestartWorker", "Worker triggered. Checking foreground service state...")
-        
-        val sessionManager = SessionManager(applicationContext)
-        val hasSession = sessionManager.getAuthToken() != null && sessionManager.getDeviceId() != -1L
+        Log.i("AgentRestartWorker", "Worker triggered. Ensuring foreground service is active...")
 
-        if (hasSession) {
-            try {
-                val serviceIntent = Intent(applicationContext, AgentForegroundService::class.java).apply {
-                    putExtra("launcher_source", "RESTART_WORKER")
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    applicationContext.startForegroundService(serviceIntent)
-                } else {
-                    applicationContext.startService(serviceIntent)
-                }
-                Log.i("AgentRestartWorker", "Foreground service started successfully by worker.")
-            } catch (e: Exception) {
-                Log.e("AgentRestartWorker", "Failed to start foreground service from worker: ${e.message}", e)
-                return Result.retry()
+        try {
+            val serviceIntent = Intent(applicationContext, AgentForegroundService::class.java).apply {
+                putExtra("launcher_source", "RESTART_WORKER")
             }
-        } else {
-            Log.i("AgentRestartWorker", "No active session. Skipping service startup.")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                applicationContext.startForegroundService(serviceIntent)
+            } else {
+                applicationContext.startService(serviceIntent)
+            }
+            Log.i("AgentRestartWorker", "Foreground service started successfully by worker.")
+        } catch (e: Exception) {
+            Log.e("AgentRestartWorker", "Failed to start foreground service from worker: ${e.message}", e)
+            return Result.retry()
         }
 
         return Result.success()
