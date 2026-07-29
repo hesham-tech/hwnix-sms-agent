@@ -235,7 +235,20 @@ class AgentForegroundService : Service() {
             }
 
             if (!isForegroundPromoted) {
-                startForeground(NOTIFICATION_ID, notification)
+                if (Build.VERSION.SDK_INT >= 34) {
+                    try {
+                        startForeground(
+                            NOTIFICATION_ID,
+                            notification,
+                            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                        )
+                    } catch (fgsEx: Throwable) {
+                        Log.w(TAG, "Fallback to standard startForeground: ${fgsEx.message}")
+                        startForeground(NOTIFICATION_ID, notification)
+                    }
+                } else {
+                    startForeground(NOTIFICATION_ID, notification)
+                }
                 isForegroundPromoted = true
                 updateServiceState(AgentServiceState.FOREGROUND_PROMOTED)
                 BootTracker.updateStage(applicationContext, "START_FOREGROUND_DONE")

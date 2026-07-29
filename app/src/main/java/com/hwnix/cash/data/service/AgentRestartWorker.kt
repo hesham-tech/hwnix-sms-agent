@@ -7,11 +7,12 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.hwnix.cash.data.local.SessionManager
 
-/* تعليق عربي مختصر: عامل خلفية جدولي للتحقق وإعادة تشغيل الخدمة الأمامية لضمان استمراريتها بعد الإقلاع */
+/* تعليق عربي مختصر: عامل خلفية جدولي واستثنائي (Expedited) لإعادة تشغيل الخدمة الأمامية وتجاوز قيود الخلفية في أندرويد 12+ */
 class AgentRestartWorker(
     context: Context,
     workerParams: WorkerParameters
@@ -20,13 +21,17 @@ class AgentRestartWorker(
     companion object {
         fun enqueue(context: Context) {
             try {
-                val request = OneTimeWorkRequestBuilder<AgentRestartWorker>().build()
+                val builder = OneTimeWorkRequestBuilder<AgentRestartWorker>()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    builder.setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                }
+                val request = builder.build()
                 WorkManager.getInstance(context).enqueueUniqueWork(
                     "AgentRestartWorker",
                     ExistingWorkPolicy.REPLACE,
                     request
                 )
-                Log.i("AgentRestartWorker", "AgentRestartWorker enqueued successfully.")
+                Log.i("AgentRestartWorker", "AgentRestartWorker enqueued successfully (Expedited mode).")
             } catch (e: Exception) {
                 Log.e("AgentRestartWorker", "Failed to enqueue AgentRestartWorker: ${e.message}")
             }

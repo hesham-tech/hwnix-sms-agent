@@ -22,6 +22,7 @@ class HwnixCashApplication : Application() {
         Log.i("HwnixCashApp", "HWNix Cash Agent Application Initialized.")
         
         ensureAgentServiceRunning()
+        com.hwnix.cash.data.receiver.AlarmReceiver.scheduleWatchdog(this)
 
         val isUnlocked = androidx.core.os.UserManagerCompat.isUserUnlocked(this)
         if (isUnlocked) {

@@ -92,9 +92,19 @@
                 <action android:name="android.intent.action.USER_UNLOCKED" />
                 <action android:name="android.intent.action.USER_PRESENT" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.REBOOT" />
+                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- حارس النبضات المستقل لإيقاظ معالج الهاتف عند الإقلاع -->
+        <receiver
+            android:name=".data.receiver.AlarmReceiver"
+            android:enabled="true"
+            android:exported="false"
+            android:directBootAware="true" />
 
         <!-- مستلم تأكيد إرسال وتسليم الرسائل الصادرة -->
         <receiver
@@ -124,7 +134,11 @@
             android:stopWithTask="false"
             android:foregroundServiceType="specialUse"
             android:directBootAware="true"
-            tools:targetApi="34" />
+            tools:targetApi="34">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="HWNix Cash Gateway background service for SMS processing and synchronization" />
+        </service>
 
     </application>
 
