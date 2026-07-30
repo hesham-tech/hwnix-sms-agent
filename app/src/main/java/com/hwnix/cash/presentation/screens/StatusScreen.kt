@@ -53,6 +53,46 @@ fun StatusScreen(
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            val sessionManager = remember { com.hwnix.cash.core.di.ServiceLocator.sessionManager }
+            val limitAlertsSummary = remember(state.isRefreshing) { sessionManager.getLimitAlertsSummary() }
+
+            if (limitAlertsSummary.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3CD))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFF856404),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "⚠️ تنبيه تجاوز حدود الحسابات المالية",
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF856404),
+                                fontSize = 14.sp
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = limitAlertsSummary,
+                                color = Color(0xFF856404),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
+
             // 1. Hero Status Card (كارت الحالة الرئيسي الفاخر)
             Card(
                 modifier = Modifier

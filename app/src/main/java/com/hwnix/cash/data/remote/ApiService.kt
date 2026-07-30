@@ -78,4 +78,7 @@ interface ApiService {
 
     @POST("v1/agent/device/log")
     suspend fun logDiagnostic(@Body body: JsonObject): Response<JsonObject>
+
+    @GET("v1/hwnix-cash/financial-accounts/limit-alerts")
+    suspend fun getLimitAlerts(): Response<JsonObject>
 }

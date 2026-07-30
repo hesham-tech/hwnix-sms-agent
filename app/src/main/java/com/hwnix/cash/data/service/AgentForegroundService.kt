@@ -119,6 +119,23 @@ class AgentForegroundService : Service() {
         }
     }
 
+    private fun isInternetConnected(): Boolean {
+        return try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val network = cm.activeNetwork ?: return false
+                val capabilities = cm.getNetworkCapabilities(network) ?: return false
+                capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            } else {
+                @Suppress("DEPRECATION")
+                val activeNetworkInfo = cm.activeNetworkInfo
+                activeNetworkInfo != null && activeNetworkInfo.isConnected
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     private var networkCallback: android.net.ConnectivityManager.NetworkCallback? = null
 
     private fun registerNetworkMonitor() {
@@ -154,6 +171,11 @@ class AgentForegroundService : Service() {
                 }
 
                 override fun onLost(network: android.net.Network) {
+                    if (isInternetConnected()) {
+                        Log.i(TAG, "Network interface lost, but another active connection is online (switching Wi-Fi/Cellular). Ignoring false offline.")
+                        return
+                    }
+
                     val logMsg = "NETWORK_DISCONNECTED: Internet connection lost!"
                     Log.w(TAG, logMsg)
                     BootTracker.updateStage(applicationContext, logMsg)
@@ -197,7 +219,12 @@ class AgentForegroundService : Service() {
             val health = com.hwnix.cash.data.local.ServiceHealthMonitor.getHealth()
 
             val notificationTitle = "${health.overallHealth.icon} ${health.overallHealth.label}"
-            val notificationText = health.statusMessage
+            val limitAlertsSummary = if (::sessionManager.isInitialized) sessionManager.getLimitAlertsSummary() else ""
+            val notificationText = if (limitAlertsSummary.isNotEmpty()) {
+                "⚠️ $limitAlertsSummary | ${health.statusMessage}"
+            } else {
+                health.statusMessage
+            }
             val now = System.currentTimeMillis()
 
             // كبح استدعاء manager.notify() إذا لم تتغير الحالة ولم ينقضِ وقت التهدئة (15 دقيقة)

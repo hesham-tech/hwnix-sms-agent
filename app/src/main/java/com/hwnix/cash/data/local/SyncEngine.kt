@@ -88,6 +88,9 @@ class SyncEngine(private val context: Context) {
                 logAndTrace("TRACE_SYNC_09: Sending heartbeat...")
                 val heartbeatSuccess = runWithBackoff { sendHeartbeat() } ?: false
                 
+                // 4. جلب حسابات التنبيهات الماليّة التي تجاوزت الحدود
+                checkLimitAlerts()
+
                 if (heartbeatSuccess) {
                     sessionManager.saveLastSyncSuccessTime(System.currentTimeMillis())
                     logAndTrace("TRACE_SYNC_10: Sync finished successfully")
@@ -99,6 +102,40 @@ class SyncEngine(private val context: Context) {
                 BootTracker.logException(context, "SyncEngine.performFullSync", e)
                 sendRemoteLog("TRACE_SYNC_ERROR", "Sync error: ${e.message}")
             }
+        }
+    }
+
+    suspend fun checkLimitAlerts(): List<String> {
+        return try {
+            val response = apiService.getLimitAlerts()
+            if (response.isSuccessful) {
+                val body = response.body()
+                val data = body?.getAsJsonArray("data")
+                val alertsList = mutableListOf<String>()
+                if (data != null && data.size() > 0) {
+                    for (i in 0 until data.size()) {
+                        val acc = data.get(i).asJsonObject
+                        val accName = acc.get("name")?.asString ?: "حساب مالي"
+                        val triggeredArray = acc.getAsJsonArray("triggered_alerts")
+                        if (triggeredArray != null && triggeredArray.size() > 0) {
+                            for (j in 0 until triggeredArray.size()) {
+                                val t = triggeredArray.get(j).asJsonObject
+                                val label = t.get("label")?.asString ?: "تنبيه الحد"
+                                alertsList.add("$accName: $label")
+                            }
+                        }
+                    }
+                }
+                val summary = alertsList.joinToString(" | ")
+                sessionManager.saveLimitAlertsSummary(summary)
+                Log.i(TAG, "Limit alerts updated: ${alertsList.size} alerts found ($summary)")
+                alertsList
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to fetch limit alerts: ${e.message}")
+            emptyList()
         }
     }
 

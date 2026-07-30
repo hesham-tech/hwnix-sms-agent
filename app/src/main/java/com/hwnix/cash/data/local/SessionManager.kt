@@ -33,6 +33,7 @@ class SessionManager(context: Context) {
         private const val KEY_SETUP_COMPLETE = "setup_complete"
         private const val KEY_GATEWAY_NAME = "gateway_name"
         private const val KEY_LAST_SYNC_SUCCESS = "last_sync_success"
+        private const val KEY_LIMIT_ALERTS_SUMMARY = "limit_alerts_summary"
 
         
         private const val DEFAULT_BASE_URL = "https://bill-api.hwnix.com/api/" // رابط سيرفر الإنتاج الافتراضي
@@ -184,5 +185,13 @@ class SessionManager(context: Context) {
 
     fun saveLastIncomingSmsCheckTime(time: Long) {
         sharedPreferences.edit().putLong("last_incoming_sms_check_time", time).apply()
+    }
+
+    fun getLimitAlertsSummary(): String {
+        return sharedPreferences.getString(KEY_LIMIT_ALERTS_SUMMARY, "") ?: ""
+    }
+
+    fun saveLimitAlertsSummary(summary: String) {
+        sharedPreferences.edit().putString(KEY_LIMIT_ALERTS_SUMMARY, summary).apply()
     }
 }
