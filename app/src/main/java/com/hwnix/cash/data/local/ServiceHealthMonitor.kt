@@ -74,7 +74,6 @@ object ServiceHealthMonitor {
 
         val calculatedHealth = when {
             !newServiceRunning || !newForegroundActive -> ServiceHealthState.BROKEN
-            !newSyncLoopRunning -> ServiceHealthState.BROKEN
             !newInternetAvailable -> ServiceHealthState.WARNING // تحذير: لا يوجد اتصال بالإنترنت
             newFailures >= 3 -> ServiceHealthState.BROKEN
             newFailures >= 1 -> ServiceHealthState.DEGRADED

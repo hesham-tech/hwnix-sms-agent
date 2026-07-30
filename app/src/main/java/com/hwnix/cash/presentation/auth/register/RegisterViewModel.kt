@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/* تعليق عربي مختصر: نموذج العرض لمعالجة مدخلات تسجيل شركة ومدير جديد سحابياً ومزامنة البيانات مع السيرفر */
 class RegisterViewModel(
     private val sessionManager: SessionManager,
     private val registerUseCase: RegisterUseCase
@@ -35,6 +36,10 @@ class RegisterViewModel(
 
     fun onServerUrlChange(url: String) {
         _uiState.update { it.copy(serverUrl = url, errorMessage = null) }
+    }
+
+    fun onCompanyNameChange(name: String) {
+        _uiState.update { it.copy(companyName = name, errorMessage = null) }
     }
 
     fun onFullNameChange(name: String) {
@@ -63,10 +68,15 @@ class RegisterViewModel(
 
     fun register() {
         val state = _uiState.value
-        if (state.serverUrl.isBlank() || state.fullName.isBlank() || state.nickname.isBlank() ||
+        if (state.serverUrl.isBlank() || state.companyName.isBlank() || state.fullName.isBlank() ||
             state.phone.isBlank() || state.password.isBlank()
         ) {
-            _uiState.update { it.copy(errorMessage = "يرجى ملء جميع الحقول المطلوبة.") }
+            _uiState.update { it.copy(errorMessage = "يرجى ملء كافة الحقول الأساسية (اسم الشركة، اسم المالك، الهاتف، وكلمة المرور).") }
+            return
+        }
+
+        if (state.password.length < 8) {
+            _uiState.update { it.copy(errorMessage = "يجب أن لا تقل كلمة المرور عن 8 أحرف.") }
             return
         }
 
@@ -76,21 +86,22 @@ class RegisterViewModel(
             sessionManager.saveBaseUrl(cleanedUrl)
             ApiClient.resetClient()
 
-            val result = registerUseCase.execute(
+            val result = registerUseCase(
+                companyName = state.companyName.trim(),
                 fullName = state.fullName.trim(),
-                nickname = state.nickname.trim(),
+                nickname = state.nickname.ifBlank { state.fullName }.trim(),
                 phone = state.phone.trim(),
                 email = state.email.trim(),
                 password = state.password.trim()
             )
 
             if (result.isSuccess) {
-                _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+                _uiState.update { it.copy(isLoading = false) }
             } else {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = result.exceptionOrNull()?.message ?: "حدث خطأ غير متوقع."
+                        errorMessage = result.exceptionOrNull()?.message ?: "حدث خطأ غير متوقع أثناء تجهيز الشركة."
                     )
                 }
             }

@@ -52,6 +52,7 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun register(
+        companyName: String,
         fullName: String,
         nickname: String,
         phone: String,
@@ -60,6 +61,7 @@ class AuthRepositoryImpl(
     ): Result<Unit> {
         return try {
             val payload = JsonObject().apply {
+                addProperty("company_name", companyName)
                 addProperty("full_name", fullName)
                 addProperty("nickname", nickname)
                 addProperty("phone", phone)

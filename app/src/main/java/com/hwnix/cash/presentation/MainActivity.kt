@@ -214,7 +214,7 @@ class MainActivity : ComponentActivity() {
                         if (isRegistering) {
                             RegisterScreen(
                                 state = registerState,
-                                onServerUrlChange = { registerViewModel.onServerUrlChange(it) },
+                                onCompanyNameChange = { registerViewModel.onCompanyNameChange(it) },
                                 onFullNameChange = { registerViewModel.onFullNameChange(it) },
                                 onNicknameChange = { registerViewModel.onNicknameChange(it) },
                                 onPhoneChange = { registerViewModel.onPhoneChange(it) },
@@ -227,7 +227,6 @@ class MainActivity : ComponentActivity() {
                         } else {
                             LoginScreen(
                                 state = loginState,
-                                onServerUrlChange = { loginViewModel.onServerUrlChange(it) },
                                 onLoginChange = { loginViewModel.onLoginInputChange(it) },
                                 onPasswordChange = { loginViewModel.onPasswordInputChange(it) },
                                 onTogglePassword = { loginViewModel.togglePasswordVisibility() },

@@ -104,7 +104,9 @@ class AgentForegroundService : Service() {
             com.hwnix.cash.data.local.ServiceHealthMonitor.updateHealth(
                 isServiceRunning = true,
                 isForegroundActive = true,
-                reason = "تخلّق الخدمة",
+                isSyncLoopRunning = true,
+                consecutiveFailures = 0,
+                reason = "بدء تشغيل الخدمة بنجاح",
                 context = applicationContext
             )
 
