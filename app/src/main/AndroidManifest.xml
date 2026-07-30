@@ -2,12 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- أذونات ومميزات الرسائل القصيرة SMS -->
+    <!-- أذونات ومميزات الرسائل القصيرة SMS الواردة فقط -->
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
-    <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
-    <uses-permission android:name="android.permission.WRITE_SMS" />
     
     <!-- أذونات حالة الهاتف والشبكة والأسماء -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
@@ -105,17 +103,6 @@
             android:enabled="true"
             android:exported="false"
             android:directBootAware="true" />
-
-        <!-- مستلم تأكيد إرسال وتسليم الرسائل الصادرة -->
-        <receiver
-            android:name=".data.receiver.SmsDeliveryReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.hwnix.cash.SMS_SENT" />
-                <action android:name="com.hwnix.cash.SMS_DELIVERED" />
-            </intent-filter>
-        </receiver>
 
         <!-- خدمة استقبال إشعارات FCM الصامتة -->
         <service

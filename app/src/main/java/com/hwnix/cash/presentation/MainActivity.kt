@@ -94,11 +94,10 @@ class MainActivity : ComponentActivity() {
                             Log.e("MainActivity", "Failed to start foreground service: ${e.message}", e)
                         }
 
-                        // طلب الصلاحيات
+                        // طلب الصلاحيات (الرسائل الواردة فقط والإشعارات)
                         permissionLauncher.launch(
                             arrayOf(
                                 android.Manifest.permission.RECEIVE_SMS,
-                                android.Manifest.permission.SEND_SMS,
                                 android.Manifest.permission.READ_SMS,
                                 android.Manifest.permission.READ_PHONE_STATE,
                                 android.Manifest.permission.READ_CONTACTS,
