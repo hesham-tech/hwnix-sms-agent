@@ -96,7 +96,7 @@ class RegisterViewModel(
             )
 
             if (result.isSuccess) {
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update { it.copy(isLoading = false, isSuccess = true) }
             } else {
                 _uiState.update {
                     it.copy(

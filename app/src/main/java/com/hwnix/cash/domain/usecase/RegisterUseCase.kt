@@ -16,6 +16,15 @@ class RegisterUseCase(
         email: String,
         password: String
     ): Result<Unit> {
-        return authRepository.register(companyName, fullName, nickname, phone, email, password)
+        val registerResult = authRepository.register(companyName, fullName, nickname, phone, email, password)
+        if (registerResult.isFailure) return registerResult
+
+        // تسجيل الجهاز وربط البوابة تلقائياً بعد إنشاء الحساب الناجح
+        val deviceResult = deviceRepository.registerDevice()
+        if (deviceResult.isFailure) {
+            android.util.Log.w("RegisterUseCase", "Device auto registration warning: ${deviceResult.exceptionOrNull()?.message}")
+        }
+
+        return Result.success(Unit)
     }
 }

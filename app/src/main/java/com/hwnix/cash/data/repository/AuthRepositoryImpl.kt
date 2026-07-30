@@ -76,6 +76,7 @@ class AuthRepositoryImpl(
                 if (responseBody.get("status")?.asBoolean == true) {
                     val data = responseBody.getAsJsonObject("data")
                     val token = data.get("token").asString
+                    sessionManager.clearSession()
                     sessionManager.saveAuthToken(token)
                     ApiClient.resetClient()
                     return Result.success(Unit)

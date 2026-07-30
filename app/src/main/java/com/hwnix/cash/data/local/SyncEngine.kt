@@ -720,7 +720,7 @@ class SyncEngine(private val context: Context) {
             } catch (e: Exception) { /* ignore */ }
             return false
         }
-        if (responseCode == 422 || responseCode == 404) {
+        if (responseCode == 422 || responseCode == 404 || responseCode == 400) {
             Log.w(TAG, "Device ID not found or invalid on server. Re-registering...")
             sessionManager.saveDeviceId(-1L)
             return registerDeviceSync()
