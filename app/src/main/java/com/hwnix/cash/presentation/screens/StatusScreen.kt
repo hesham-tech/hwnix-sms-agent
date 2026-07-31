@@ -162,17 +162,20 @@ fun StatusScreen(
                             ) {
                                 // مؤشر حالة الخدمة
                                 Row(verticalAlignment = Alignment.CenterVertically) {
+                                    val serviceColor = if (isConnected) Color(0xFF4ADE80) else Color(0xFFFBBF24)
+                                    val serviceText = if (isConnected) "الخدمة نشطة" else "في انتظار الاتصال"
+                                    
                                     Box(
                                         modifier = Modifier
                                             .size(9.dp)
                                             .clip(CircleShape)
-                                            .background(Color(0xFF4ADE80))
+                                            .background(serviceColor)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "الخدمة نشطة",
+                                        text = serviceText,
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = Color(0xFF4ADE80),
+                                        color = serviceColor,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
