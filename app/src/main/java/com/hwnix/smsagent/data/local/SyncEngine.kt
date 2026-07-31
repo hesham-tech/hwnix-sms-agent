@@ -28,7 +28,7 @@ class SyncEngine(private val context: Context) {
     companion object {
         private const val TAG = "SyncEngine"
         // مفتاح تفعيل/تعطيل سحب وإرسال الأوامر الصادرة من السيرفر مؤقتاً لتوفير الطاقة الحاد بدون حذف الكود
-        const val ENABLE_PULL_SERVER_COMMANDS = false
+        const val ENABLE_PULL_SERVER_COMMANDS = true
     }
 
     /**
