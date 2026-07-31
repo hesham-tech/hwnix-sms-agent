@@ -7,11 +7,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -21,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.io.File
 
+// مكوّن القائمة الجانبية - يحتوي على التنقل وخيارات الحساب وزر الخروج مع تأكيد
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppDrawer(
@@ -35,8 +39,96 @@ fun AppDrawer(
     onNavigateToScreen: (String) -> Unit = {},
     onInstallLocalApk: (File) -> Unit,
     onCheckForUpdate: () -> Unit,
+    onLogoutClick: () -> Unit = {},
+    onDecoupleClick: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
+    // حالات dialogs التأكيد
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showDecoupleDialog by remember { mutableStateOf(false) }
+
+    // Dialog تأكيد تسجيل الخروج
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            icon = {
+                Icon(
+                    Icons.Filled.Logout,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = {
+                Text(
+                    "تسجيل الخروج",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text("هل تريد تسجيل الخروج حقاً؟ ستحتاج إلى إعادة تسجيل الدخول لاستئناف الخدمة.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        onLogoutClick()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("نعم، تسجيل الخروج")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showLogoutDialog = false }) {
+                    Text("تراجع")
+                }
+            }
+        )
+    }
+
+    // Dialog تأكيد إلغاء الربط
+    if (showDecoupleDialog) {
+        AlertDialog(
+            onDismissRequest = { showDecoupleDialog = false },
+            icon = {
+                Icon(
+                    Icons.Filled.Warning,
+                    contentDescription = null,
+                    tint = Color(0xFFF59E0B)
+                )
+            },
+            title = {
+                Text(
+                    "إلغاء ربط الجهاز",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text("سيتم إلغاء ربط هذا الجهاز بالحساب. هل أنت متأكد؟")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDecoupleDialog = false
+                        onDecoupleClick()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF59E0B)
+                    )
+                ) {
+                    Text("نعم، إلغاء الربط")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDecoupleDialog = false }) {
+                    Text("تراجع")
+                }
+            }
+        )
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -192,6 +284,41 @@ fun AppDrawer(
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // أزرار الخروج وإلغاء الربط
+                OutlinedButton(
+                    onClick = { showDecoupleDialog = true },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFFF59E0B)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Icon(Icons.Filled.LinkOff, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("إلغاء ربط الجهاز", fontWeight = FontWeight.SemiBold)
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                TextButton(
+                    onClick = { showLogoutDialog = true },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Icon(Icons.Filled.Logout, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("تسجيل الخروج", fontWeight = FontWeight.SemiBold)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
                 HorizontalDivider()
                 Box(
                     modifier = Modifier

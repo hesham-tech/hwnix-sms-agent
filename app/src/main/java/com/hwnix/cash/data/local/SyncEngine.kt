@@ -352,10 +352,10 @@ class SyncEngine(private val context: Context) {
         val lastCheckTime = sessionManager.getLastIncomingSmsCheckTime()
         val currentTime = System.currentTimeMillis()
         
-        // إذا كانت أول مرة، نفحص آخر ساعتين فقط لمنع رفع تاريخ الرسائل بالكامل
-        val sinceTime = if (lastCheckTime == 0L) currentTime - (2 * 3600 * 1000) else lastCheckTime
+        // إذا كانت أول مرة بعد التثبيت (lastCheckTime == 0L)، نفحص من البداية (date = 0) لمزامنة كافة الرسائل القديمة بالكامل
+        val sinceTime = if (lastCheckTime == 0L) 0L else lastCheckTime
         
-        Log.i(TAG, "Scanning system inbox for new incoming SMS since: $sinceTime")
+        Log.i(TAG, "Scanning system inbox for incoming SMS since timestamp: $sinceTime")
         sendRemoteLog("TRACE_INBOX_SCAN", "Scanning system inbox since: $sinceTime")
         
         try {

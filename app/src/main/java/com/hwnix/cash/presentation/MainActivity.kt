@@ -266,7 +266,9 @@ class MainActivity : ComponentActivity() {
                                 coroutineScope.launch { drawerState.close() }
                             },
                             onInstallLocalApk = { statusViewModel.installLocalApk(it) },
-                            onCheckForUpdate = { statusViewModel.checkForUpdate(currentVersionCode) }
+                            onCheckForUpdate = { statusViewModel.checkForUpdate(currentVersionCode) },
+                             onLogoutClick = { statusViewModel.logout { isLoggedIn = false } },
+                             onDecoupleClick = { statusViewModel.logout { isLoggedIn = false } }
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 if (currentScreen == "diagnostics") {
@@ -277,11 +279,6 @@ class MainActivity : ComponentActivity() {
                                         onRefresh = { statusViewModel.refreshAll(currentVersionCode) },
                                         onSyncNowClick = { statusViewModel.performFullSync(syncEngine) },
                                         onSimSetupClick = { statusViewModel.openSimSetupDialog() },
-                                        onLogoutClick = {
-                                            statusViewModel.logout {
-                                                isLoggedIn = false
-                                            }
-                                        },
                                         onBatteryOptimizeClick = {
                                             statusViewModel.disableBatteryOptimization()
                                         }
@@ -292,11 +289,13 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
                                         .padding(8.dp)
+                                        .size(44.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Filled.Menu,
                                         contentDescription = "القائمة",
-                                        tint = MaterialTheme.colorScheme.primary
+                                        tint = androidx.compose.ui.graphics.Color(0xFF0D47A1),
+                                        modifier = Modifier.size(30.dp)
                                     )
                                 }
                             }
