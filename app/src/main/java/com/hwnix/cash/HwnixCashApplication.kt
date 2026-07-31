@@ -1,0 +1,111 @@
+package com.hwnix.cash
+
+import android.app.Application
+import android.util.Log
+
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import java.util.concurrent.TimeUnit
+import com.hwnix.cash.data.service.AgentRestartWorker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+
+/* تعليق عربي مختصر: الفئة الأساسية للتطبيق لتهيئة الخدمات وجدولة عامل إعادة التشغيل التلقائي واستيراد رسائل وضع القفل */
+class HwnixCashApplication : Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+        com.hwnix.cash.core.di.ServiceLocator.initialize(this)
+        Log.i("HwnixCashApp", "HWNix Cash Agent Application Initialized.")
+        
+        ensureAgentServiceRunning()
+        com.hwnix.cash.data.receiver.AlarmReceiver.scheduleWatchdog(this)
+
+        val isUnlocked = androidx.core.os.UserManagerCompat.isUserUnlocked(this)
+        if (isUnlocked) {
+            scheduleRestartWorker()
+            processDirectBootSms()
+        } else {
+            Log.i("HwnixCashApp", "Application started in LOCKED state (Direct Boot). Postponing initialization.")
+        }
+    }
+
+    private fun ensureAgentServiceRunning() {
+        try {
+            val serviceIntent = android.content.Intent(this, com.hwnix.cash.data.service.AgentForegroundService::class.java).apply {
+                putExtra("launcher_source", "APP_ON_CREATE")
+            }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+            Log.i("HwnixCashApp", "AgentForegroundService start requested from Application.onCreate")
+        } catch (e: Exception) {
+            Log.e("HwnixCashApp", "Failed to start service directly from Application.onCreate, enqueuing worker: ${e.message}")
+            AgentRestartWorker.enqueue(this)
+        }
+    }
+
+    private fun scheduleRestartWorker() {
+        try {
+            val workRequest = PeriodicWorkRequestBuilder<AgentRestartWorker>(
+                15, TimeUnit.MINUTES
+            ).build()
+
+            WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                "AgentRestartWork",
+                ExistingPeriodicWorkPolicy.KEEP,
+                workRequest
+            )
+            Log.i("SmsAgentApp", "AgentRestartWorker scheduled successfully.")
+        } catch (e: Exception) {
+            Log.e("SmsAgentApp", "Failed to schedule AgentRestartWorker: ${e.message}", e)
+        }
+    }
+
+    private fun processDirectBootSms() {
+        val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        appScope.launch {
+            try {
+                val deviceProtectedContext = createDeviceProtectedStorageContext()
+                val directory = java.io.File(deviceProtectedContext.filesDir, "direct_boot_sms")
+                if (directory.exists() && directory.isDirectory) {
+                    val files = directory.listFiles()
+                    if (files != null && files.isNotEmpty()) {
+                        Log.i("SmsAgentApp", "Found ${files.size} queued SMS from Direct Boot mode. Importing...")
+                        val smsDao = com.hwnix.cash.core.di.ServiceLocator.database.smsDao()
+                        val syncEngine = com.hwnix.cash.data.local.SyncEngine(applicationContext)
+                        
+                        files.forEach { file ->
+                            try {
+                                val content = file.readText()
+                                val json = com.google.gson.JsonParser.parseString(content).asJsonObject
+                                val smsEntity = com.hwnix.cash.data.local.SmsEntity(
+                                    phoneNumber = json.get("phoneNumber").asString,
+                                    messageBody = json.get("messageBody").asString,
+                                    subscriptionId = json.get("subscriptionId").asString,
+                                    sentAt = json.get("sentAt").asLong,
+                                    direction = "incoming",
+                                    status = "pending_upload",
+                                    messageRef = java.util.UUID.randomUUID().toString()
+                                )
+                                smsDao.insert(smsEntity)
+                                file.delete()
+                                Log.i("SmsAgentApp", "Imported queued SMS: ${file.name}")
+                            } catch (e: Exception) {
+                                Log.e("SmsAgentApp", "Error importing queued SMS file: ${file.name}", e)
+                            }
+                        }
+                        syncEngine.performFullSync()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("SmsAgentApp", "Error processing direct boot SMS directory: ${e.message}", e)
+            }
+        }
+    }
+}

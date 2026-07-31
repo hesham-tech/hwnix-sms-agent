@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "hwnix-sms-agent"
+rootProject.name = "hwnix-cash"
 include(":app")

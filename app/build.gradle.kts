@@ -12,15 +12,15 @@ jacoco {
 }
 
 android {
-    namespace = "com.hwnix.smsagent"
+    namespace = "com.hwnix.cash"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.hwnix.smsagent"
+        applicationId = "com.hwnix.cash"
         minSdk = 26
         targetSdk = 34
-        versionCode = 54
-        versionName = "1.0.54"
+        versionCode = 75
+        versionName = "1.0.75"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -95,7 +95,7 @@ android {
         val variant = this
         variant.outputs.all {
             val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
-            output.outputFileName = "sms-agent-v${variant.versionName}.apk"
+            output.outputFileName = "hwnix-cash-v${variant.versionName}.apk"
         }
         variant.packageApplicationProvider.configure {
             outputs.upToDateWhen { false } // إجبار توليد ملف الـ APK دائماً وتجنب تخطيه
@@ -105,10 +105,10 @@ android {
             doLast {
                 val vCode = variant.versionCode
                 val vName = variant.versionName
-                val apkFileName = "sms-agent-v${vName}.apk"
+                val apkFileName = "hwnix-cash-v${vName}.apk"
 
                 // 1. نسخ الـ APK إلى مجلد الباك إند (مع حذف القديمة)
-                val backendDir = file("../../hwmix-bill-api/public/downloads")
+                val backendDir = file("../../hwnix-bill-api/public/downloads")
                 val androidApksDir = file("../apks")
                 
                 if (!androidApksDir.exists()) {
@@ -116,13 +116,13 @@ android {
                 }
 
                 // تنظيف مجلد apks الأندرويد القديم
-                androidApksDir.listFiles()?.filter { it.name.startsWith("sms-agent-") && it.name.endsWith(".apk") }?.forEach {
+                androidApksDir.listFiles()?.filter { (it.name.startsWith("hwnix-cash-") || it.name.startsWith("sms-agent-")) && it.name.endsWith(".apk") }?.forEach {
                     it.delete()
                 }
 
                 if (backendDir.exists()) {
                     // حذف أي APK قديم قبل النسخ
-                    backendDir.listFiles()?.filter { it.name.startsWith("sms-agent-") && it.name.endsWith(".apk") }?.forEach {
+                    backendDir.listFiles()?.filter { (it.name.startsWith("hwnix-cash-") || it.name.startsWith("sms-agent-")) && it.name.endsWith(".apk") }?.forEach {
                         it.delete()
                         println("🗑️ Deleted old APK: ${it.name}")
                     }
