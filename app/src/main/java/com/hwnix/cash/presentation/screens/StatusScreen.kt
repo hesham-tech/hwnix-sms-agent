@@ -50,7 +50,7 @@ fun StatusScreen(
 ) {
     val context = LocalContext.current
     var bootDiagnostics by remember { mutableStateOf(BootTracker.getDiagnostics(context)) }
-    val health = remember(state.isRefreshing) { ServiceHealthMonitor.getHealth() }
+    val health by ServiceHealthMonitor.healthFlow.collectAsState()
     var visible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { visible = true }
@@ -162,8 +162,8 @@ fun StatusScreen(
                             ) {
                                 // مؤشر حالة الخدمة
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    val serviceColor = if (isConnected) Color(0xFF4ADE80) else Color(0xFFFBBF24)
-                                    val serviceText = if (isConnected) "الخدمة نشطة" else "في انتظار الاتصال"
+                                    val serviceColor = Color(health.overallHealth.colorHex)
+                                    val serviceText = health.overallHealth.label
                                     
                                     Box(
                                         modifier = Modifier
