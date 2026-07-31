@@ -180,7 +180,7 @@ fun AppDrawer(
 
                 // Navigation Items
                 NavigationDrawerItem(
-                    label = { Text("لوحة التحكم وحالة الخدمة", fontWeight = FontWeight.SemiBold) },
+                    label = { Text("الرئيسية", fontWeight = FontWeight.SemiBold) },
                     icon = { Icon(Icons.Filled.Dashboard, contentDescription = null) },
                     selected = currentScreen == "status",
                     onClick = { onNavigateToScreen("status") },

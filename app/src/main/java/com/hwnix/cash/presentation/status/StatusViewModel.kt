@@ -32,6 +32,19 @@ class StatusViewModel(
 
     init {
         refreshDeviceInfo()
+        
+        viewModelScope.launch {
+            com.hwnix.cash.data.local.ServiceHealthMonitor.healthFlow.collect { health ->
+                val connStatus = when {
+                    sessionManager.getAuthToken() == null -> "غير متصل"
+                    !health.isInternetAvailable -> "غير متصل (لا يوجد إنترنت)"
+                    health.overallHealth == com.hwnix.cash.data.local.ServiceHealthState.BROKEN -> "غير متصل (الخدمة متوقفة)"
+                    health.isInternetAvailable -> "متصل"
+                    else -> "غير متصل"
+                }
+                _uiState.update { it.copy(connectionStatus = connStatus) }
+            }
+        }
     }
 
     fun refreshAll(currentVersionCode: Int) {

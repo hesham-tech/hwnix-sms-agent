@@ -270,37 +270,7 @@ fun StatusScreen(
                 }
             }
 
-            // ─── شبكة الإحصائيات السريعة 2×2 ─────────────────────────────
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { it / 2 }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    MetricCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Filled.CloudSync,
-                        label = "محاولات التعافي",
-                        value = "${health.recoveryCount}",
-                        containerColor = Color(0xFFE8F5E9),
-                        iconTint = Color(0xFF2E7D32),
-                        valueColor = Color(0xFF1B5E20)
-                    )
-                    MetricCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Filled.CheckCircle,
-                        label = "استقرار المزامنة",
-                        value = if (health.consecutiveFailures == 0) "مستقر ✓" else "${health.consecutiveFailures} أخطاء",
-                        containerColor = if (health.consecutiveFailures == 0) Color(0xFFE3F2FD) else Color(0xFFFFEBEE),
-                        iconTint = if (health.consecutiveFailures == 0) Color(0xFF1565C0) else Color(0xFFB71C1C),
-                        valueColor = if (health.consecutiveFailures == 0) Color(0xFF0D47A1) else Color(0xFFC62828)
-                    )
-                }
-            }
+
 
             // ─── بطاقة تفاصيل الاتصال ────────────────────────────────────
             AnimatedVisibility(
@@ -497,30 +467,7 @@ fun StatusScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
 
-                    // تذكير خفيف بموقع الخروج
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Outlined.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            "تسجيل الخروج متاح من القائمة الجانبية ☰",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }

@@ -5,6 +5,9 @@ import android.util.Log
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 enum class ServiceHealthState(val icon: String, val label: String, val colorHex: Int) {
     STARTING("🔵", "جاري تهيئة النظام...", 0xFF1565C0.toInt()), // أزرق غامق
@@ -37,6 +40,9 @@ object ServiceHealthMonitor {
 
     @Volatile
     private var currentHealth = ServiceHealth()
+
+    private val _healthFlow = MutableStateFlow(currentHealth)
+    val healthFlow: StateFlow<ServiceHealth> = _healthFlow.asStateFlow()
 
     fun getHealth(): ServiceHealth = currentHealth
 
@@ -122,6 +128,8 @@ object ServiceHealthMonitor {
             statusMessage = formattedMessage,
             reasonForLastStateChange = newReason
         )
+
+        _healthFlow.value = currentHealth
 
         try {
             Log.i(TAG, "Health state updated: ${calculatedHealth.name} | Msg: $formattedMessage | Reason: $newReason")
