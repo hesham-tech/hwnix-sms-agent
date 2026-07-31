@@ -107,7 +107,7 @@ android {
                 val vName = variant.versionName
                 val apkFileName = "hwnix-cash-v${vName}.apk"
 
-                // 1. نسخ الـ APK إلى مجلد الباك إند (مع حذف القديمة)
+                // 1. نسخ الـ APK إلى مجلد الباك إند (الاحتفاظ بأحدث 5 نسخ)
                 val backendDir = file("../../hwnix-bill-api/public/downloads")
                 val androidApksDir = file("../apks")
                 
@@ -115,19 +115,6 @@ android {
                     androidApksDir.mkdirs()
                 }
 
-                // تنظيف مجلد apks الأندرويد القديم
-                androidApksDir.listFiles()?.filter { (it.name.startsWith("hwnix-cash-") || it.name.startsWith("sms-agent-")) && it.name.endsWith(".apk") }?.forEach {
-                    it.delete()
-                }
-
-                if (backendDir.exists()) {
-                    // حذف أي APK قديم قبل النسخ
-                    backendDir.listFiles()?.filter { (it.name.startsWith("hwnix-cash-") || it.name.startsWith("sms-agent-")) && it.name.endsWith(".apk") }?.forEach {
-                        it.delete()
-                        println("🗑️ Deleted old APK: ${it.name}")
-                    }
-                }
-                
                 variant.outputs.map { it.outputFile }.forEach { apkFile ->
                     if (apkFile.exists()) {
                         // نسخ للباك إند
@@ -144,6 +131,28 @@ android {
                         println("⚠️ Source APK file does not exist: ${apkFile.absolutePath}")
                     }
                 }
+
+                // دالة مساعدة لتنظيف المجلد والاحتفاظ بأحدث 5 ملفات فقط
+                val keepLatestFive = { dir: java.io.File ->
+                    if (dir.exists()) {
+                        val apks = dir.listFiles()?.filter { (it.name.startsWith("hwnix-cash-") || it.name.startsWith("sms-agent-")) && it.name.endsWith(".apk") }
+                        if (apks != null && apks.size > 5) {
+                            // ترتيب تنازلي حسب تاريخ التعديل (الأحدث أولاً)
+                            val sortedApks = apks.sortedByDescending { it.lastModified() }
+                            // حذف ما بعد الخامس
+                            sortedApks.drop(5).forEach { oldApk ->
+                                oldApk.delete()
+                                println("🗑️ Deleted old APK to keep top 5: ${oldApk.name} from ${dir.name}")
+                            }
+                        }
+                    }
+                }
+
+                // تنظيف مجلد الباك إند
+                keepLatestFive(backendDir)
+                
+                // تنظيف مجلد apks الأندرويد
+                keepLatestFive(androidApksDir)
 
                 // 2. تحديث ملف app-version.json في الباك إند تلقائياً بالمعلومات الصحيحة
                 if (backendDir.exists()) {
