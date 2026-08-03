@@ -84,4 +84,13 @@ interface ApiService {
 
     @GET("v1/hwnix-cash/financial-accounts/limit-alerts")
     suspend fun getLimitAlerts(): Response<JsonObject>
+
+    @GET("v1/agent/wallets")
+    suspend fun getWallets(): Response<JsonObject>
+
+    @POST("v1/agent/validate-onboarding")
+    suspend fun validateOnboarding(@Body body: JsonObject): Response<JsonObject>
+
+    @POST("v1/agent/onboarding/complete")
+    suspend fun completeOnboarding(@Body body: JsonObject): Response<JsonObject>
 }

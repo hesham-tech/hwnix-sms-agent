@@ -361,5 +361,28 @@ class StatusViewModel(
             refreshDeviceInfo()
         }
     }
+
+    fun checkWallets(onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = com.hwnix.cash.data.remote.ApiClient.getService().getWallets()
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    val hasWallets = if (body?.has("data") == true && body.get("data").isJsonArray) {
+                        body.getAsJsonArray("data").size() > 0
+                    } else {
+                        false
+                    }
+                    onResult(hasWallets)
+                } else {
+                    // Fallback to status screen if API fails
+                    onResult(true)
+                }
+            } catch (e: Exception) {
+                onResult(true)
+            }
+        }
+    }
 }
+
 

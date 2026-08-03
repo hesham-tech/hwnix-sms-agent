@@ -256,6 +256,10 @@ class MainActivity : ComponentActivity() {
                         LaunchedEffect(isLoggedIn) {
                             if (isLoggedIn && sessionManager.getCompanyId() == -1L) {
                                 currentScreen = "company_selection"
+                            } else if (isLoggedIn) {
+                                statusViewModel.checkWallets { hasWallets ->
+                                    currentScreen = if (hasWallets) "status" else "onboarding_wizard"
+                                }
                             }
                         }
 
@@ -283,10 +287,22 @@ class MainActivity : ComponentActivity() {
                                 } else if (currentScreen == "company_selection") {
                                     com.hwnix.cash.presentation.screens.CompanySelectionScreen(
                                         onNavigateNext = {
-                                            currentScreen = "status"
-                                            // trigger a sync when company changes to fetch new lines/config
                                             statusViewModel.performFullSync(syncEngine)
+                                            statusViewModel.checkWallets { hasWallets ->
+                                                currentScreen = if (hasWallets) "status" else "onboarding_wizard"
+                                            }
                                         }
+                                    )
+                                } else if (currentScreen == "onboarding_wizard") {
+                                    val factoryOnboarding = remember { com.hwnix.cash.core.di.ViewModelFactory() }
+                                    val onboardingViewModel: com.hwnix.cash.presentation.onboarding.OnboardingViewModel = ViewModelProvider(this@MainActivity, factoryOnboarding)[com.hwnix.cash.presentation.onboarding.OnboardingViewModel::class.java]
+                                    com.hwnix.cash.presentation.onboarding.OnboardingWizardScreen(
+                                        viewModel = onboardingViewModel,
+                                        onSuccess = { currentScreen = "onboarding_success" }
+                                    )
+                                } else if (currentScreen == "onboarding_success") {
+                                    com.hwnix.cash.presentation.onboarding.SuccessScreen(
+                                        onFinish = { currentScreen = "status" }
                                     )
                                 } else {
                                     StatusScreen(
@@ -296,7 +312,8 @@ class MainActivity : ComponentActivity() {
                                         onSimSetupClick = { statusViewModel.openSimSetupDialog() },
                                         onBatteryOptimizeClick = {
                                             statusViewModel.disableBatteryOptimization()
-                                        }
+                                        },
+                                        onAddWalletClick = { currentScreen = "onboarding_wizard" }
                                     )
                                 }
                                 IconButton(

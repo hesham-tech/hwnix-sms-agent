@@ -45,6 +45,7 @@ fun StatusScreen(
     onSyncNowClick: () -> Unit,
     onSimSetupClick: () -> Unit,
     onBatteryOptimizeClick: () -> Unit,
+    onAddWalletClick: () -> Unit,
     // تم نقله للـ Drawer - احتفاظ بالمعامل للتوافق
     onLogoutClick: () -> Unit = {}
 ) {
@@ -470,6 +471,34 @@ fun StatusScreen(
                         )
                     }
 
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedButton(
+                        onClick = onAddWalletClick,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF0D47A1)
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.5.dp,
+                            Color(0xFF0D47A1).copy(alpha = 0.6f)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.AddCard,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "إضافة محفظة جديدة",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
 
                 }
             }

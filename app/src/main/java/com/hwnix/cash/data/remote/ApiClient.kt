@@ -12,7 +12,7 @@ object ApiClient {
 
     private var apiService: ApiService? = null
 
-    fun getService(context: Context): ApiService {
+    fun getService(): ApiService {
         return apiService ?: synchronized(this) {
             val sessionManager = com.hwnix.cash.core.di.ServiceLocator.sessionManager
             

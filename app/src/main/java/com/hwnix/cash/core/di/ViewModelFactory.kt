@@ -34,6 +34,11 @@ class ViewModelFactory : ViewModelProvider.Factory {
                     simManager = ServiceLocator.simManager
                 ) as T
             }
+            modelClass.isAssignableFrom(com.hwnix.cash.presentation.onboarding.OnboardingViewModel::class.java) -> {
+                com.hwnix.cash.presentation.onboarding.OnboardingViewModel(
+                    context = ServiceLocator.appContext
+                ) as T
+            }
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     }

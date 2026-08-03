@@ -75,7 +75,7 @@ object ServiceLocator {
     }
 
     val apiService: ApiService by lazy {
-        ApiClient.getService(appContext)
+        ApiClient.getService()
     }
 
     val simManager: SimManager by lazy {
