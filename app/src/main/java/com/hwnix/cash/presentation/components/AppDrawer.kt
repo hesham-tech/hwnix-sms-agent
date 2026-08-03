@@ -197,6 +197,15 @@ fun AppDrawer(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
 
+                NavigationDrawerItem(
+                    label = { Text("تغيير الشركة", fontWeight = FontWeight.SemiBold) },
+                    icon = { Icon(Icons.Filled.PointOfSale, contentDescription = null) },
+                    selected = currentScreen == "company_selection",
+                    onClick = { onNavigateToScreen("company_selection") },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                )
+
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 Spacer(modifier = Modifier.height(12.dp))

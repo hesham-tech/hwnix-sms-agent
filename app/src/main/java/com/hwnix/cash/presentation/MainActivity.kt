@@ -252,6 +252,13 @@ class MainActivity : ComponentActivity() {
 
                         var currentScreen by remember { mutableStateOf("status") }
 
+                        // Check if we need to force company selection
+                        LaunchedEffect(isLoggedIn) {
+                            if (isLoggedIn && sessionManager.getCompanyId() == -1L) {
+                                currentScreen = "company_selection"
+                            }
+                        }
+
                         AppDrawer(
                             drawerState = drawerState,
                             currentVersionName = currentVersionName,
@@ -267,12 +274,20 @@ class MainActivity : ComponentActivity() {
                             },
                             onInstallLocalApk = { statusViewModel.installLocalApk(it) },
                             onCheckForUpdate = { statusViewModel.checkForUpdate(currentVersionCode) },
-                             onLogoutClick = { statusViewModel.logout { isLoggedIn = false } },
-                             onDecoupleClick = { statusViewModel.logout { isLoggedIn = false } }
+                             onLogoutClick = { statusViewModel.logout { isLoggedIn = false; currentScreen = "status" } },
+                             onDecoupleClick = { statusViewModel.logout { isLoggedIn = false; currentScreen = "status" } }
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 if (currentScreen == "diagnostics") {
                                     com.hwnix.cash.presentation.screens.DiagnosticsScreen()
+                                } else if (currentScreen == "company_selection") {
+                                    com.hwnix.cash.presentation.screens.CompanySelectionScreen(
+                                        onNavigateNext = {
+                                            currentScreen = "status"
+                                            // trigger a sync when company changes to fetch new lines/config
+                                            statusViewModel.performFullSync(syncEngine)
+                                        }
+                                    )
                                 } else {
                                     StatusScreen(
                                         state = statusState,

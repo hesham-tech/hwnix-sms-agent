@@ -34,6 +34,7 @@ class SessionManager(context: Context) {
         private const val KEY_GATEWAY_NAME = "gateway_name"
         private const val KEY_LAST_SYNC_SUCCESS = "last_sync_success"
         private const val KEY_LIMIT_ALERTS_SUMMARY = "limit_alerts_summary"
+        private const val KEY_COMPANY_ID = "company_id"
 
         
         private const val DEFAULT_BASE_URL = "https://bill-api.hwnix.com/api/" // رابط سيرفر الإنتاج الافتراضي
@@ -168,6 +169,7 @@ class SessionManager(context: Context) {
             .remove(KEY_CONFIG_VERSION)
             .remove(KEY_SETUP_COMPLETE)
             .remove(KEY_LAST_SYNC_SUCCESS)
+            .remove(KEY_COMPANY_ID)
             .apply()
     }
 
@@ -193,5 +195,17 @@ class SessionManager(context: Context) {
 
     fun saveLimitAlertsSummary(summary: String) {
         sharedPreferences.edit().putString(KEY_LIMIT_ALERTS_SUMMARY, summary).apply()
+    }
+
+    fun getCompanyId(): Long {
+        return sharedPreferences.getLong(KEY_COMPANY_ID, -1L)
+    }
+
+    fun saveCompanyId(id: Long) {
+        sharedPreferences.edit().putLong(KEY_COMPANY_ID, id).apply()
+    }
+
+    fun clearCompanyId() {
+        sharedPreferences.edit().remove(KEY_COMPANY_ID).apply()
     }
 }

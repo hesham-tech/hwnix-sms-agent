@@ -23,6 +23,9 @@ interface ApiService {
     @POST("v1/agent/auth/refresh")
     suspend fun refreshToken(@Body body: JsonObject): Response<JsonObject>
 
+    @GET("v1/agent/companies")
+    suspend fun getCompanies(): Response<JsonObject>
+
 
     @POST("v1/agent/device/register")
     suspend fun registerDevice(

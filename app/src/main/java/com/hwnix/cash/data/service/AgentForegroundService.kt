@@ -327,55 +327,31 @@ class AgentForegroundService : Service() {
             return
         }
 
-        updateServiceState(AgentServiceState.SYNCING, "Loop started")
+        updateServiceState(AgentServiceState.SYNCING, "Initial sync started")
         com.hwnix.cash.data.local.ServiceHealthMonitor.updateHealth(
             isSyncLoopRunning = true,
-            reason = "بدء دورة المزامنة الفعالة",
+            reason = "بدء دورة المزامنة الفعالة عبر WorkManager",
             context = applicationContext
         )
 
+        // Enqueue background periodic worker instead of while(true) loop
+        com.hwnix.cash.data.worker.PeriodicSyncWorker.enqueue(applicationContext)
+
+        // Perform one initial sync immediately
         syncJob = serviceScope.launch {
-            while (true) {
-                if (!ensureDependencies()) {
-                    if (!wasLockedWaitingLogged) {
-                        updateServiceState(AgentServiceState.WAITING_FOR_UNLOCK, "Direct Boot Locked")
-                        com.hwnix.cash.data.local.ServiceHealthMonitor.updateHealth(
-                            isSyncLoopRunning = true,
-                            reason = "انتظار فك قفل الشاشة (Direct Boot)",
-                            context = applicationContext
-                        )
-                        updateLiveNotification(force = true)
-                        wasLockedWaitingLogged = true
-                    }
-                    delay(5_000L)
-                    continue
-                }
-
-                if (wasLockedWaitingLogged) {
-                    BootTracker.updateStage(applicationContext, "USER_UNLOCKED_DETECTED: Phone unlocked, resuming full sync")
-                    wasLockedWaitingLogged = false
-                }
-
-                try {
-                    Log.d(TAG, "Periodic sync triggered...")
-                    syncEngine.performFullSync()
-                    com.hwnix.cash.data.local.ServiceHealthMonitor.recordSuccessfulSync(applicationContext)
-                    com.hwnix.cash.data.local.ServiceHealthMonitor.recordHeartbeat(applicationContext)
-                } catch (e: Exception) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
-                    Log.e(TAG, "Error in sync loop: ${e.message}")
-                    com.hwnix.cash.data.local.ServiceHealthMonitor.recordFailure(e.message ?: "خطأ بالدورة", applicationContext)
-                }
-
-                val intervalSeconds: Long = try {
-                    val configured = (sessionManager.getPollingInterval() as Number).toLong()
-                    if (configured < DEFAULT_IDLE_POLL_INTERVAL_SEC) DEFAULT_IDLE_POLL_INTERVAL_SEC else configured
-                } catch (_: Exception) {
-                    DEFAULT_IDLE_POLL_INTERVAL_SEC
-                }
-
-                Log.d(TAG, "Next sync in ${intervalSeconds}s")
-                delay(intervalSeconds * 1000L)
+            if (!ensureDependencies()) {
+                Log.w(TAG, "Dependencies not ready for initial sync.")
+                return@launch
+            }
+            try {
+                Log.d(TAG, "Initial sync triggered...")
+                syncEngine.performFullSync()
+                com.hwnix.cash.data.local.ServiceHealthMonitor.recordSuccessfulSync(applicationContext)
+                com.hwnix.cash.data.local.ServiceHealthMonitor.recordHeartbeat(applicationContext)
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                Log.e(TAG, "Error in initial sync: ${e.message}")
+                com.hwnix.cash.data.local.ServiceHealthMonitor.recordFailure(e.message ?: "خطأ بالدورة", applicationContext)
             }
         }
     }

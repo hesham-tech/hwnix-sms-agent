@@ -34,6 +34,13 @@ object ApiClient {
                     sessionManager.getAuthToken()?.let { token ->
                         requestBuilder.addHeader("Authorization", "Bearer $token")
                     }
+                    
+                    // إرفاق Company ID إن وجد
+                    val companyId = sessionManager.getCompanyId()
+                    if (companyId != -1L) {
+                        requestBuilder.addHeader("X-HWNIX-COMPANY", companyId.toString())
+                    }
+                    
                     requestBuilder.addHeader("Accept", "application/json")
                     
                     val request = requestBuilder.build()

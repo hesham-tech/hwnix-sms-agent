@@ -49,6 +49,9 @@ object BootTracker {
             putString("last_action", action)
             putString("last_stage", "RECEIVER_ENTERED")
             putString("last_timestamp", timeStamp)
+            if (currentCount > 50) {
+                remove("boot_history_${currentCount - 50}")
+            }
             putString("boot_history_${currentCount}", "[$timeStamp] Action: $action")
             apply()
         }
@@ -60,11 +63,13 @@ object BootTracker {
         val prefs = getSafePrefs(context)
         val timeStamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
         val currentStageLog = prefs.getString("stage_log", "") ?: ""
-        val newStageLog = if (currentStageLog.isEmpty()) "[$timeStamp] $stage" else "$currentStageLog\n[$timeStamp] $stage"
+        
+        val lines = currentStageLog.split("\n").filter { it.isNotBlank() }
+        val newLines = lines.takeLast(49) + "[$timeStamp] $stage"
 
         prefs.edit().apply {
             putString("last_stage", stage)
-            putString("stage_log", newStageLog)
+            putString("stage_log", newLines.joinToString("\n"))
             apply()
         }
     }
@@ -143,7 +148,8 @@ object BootTracker {
         val exceptionTrace = prefs.getString("exception_trace", "") ?: ""
 
         val historyList = mutableListOf<String>()
-        for (i in 1..bootCount) {
+        val startIdx = if (bootCount > 50) bootCount - 49 else 1
+        for (i in startIdx..bootCount) {
             val record = prefs.getString("boot_history_${i}", null)
             if (record != null) {
                 historyList.add(record)
