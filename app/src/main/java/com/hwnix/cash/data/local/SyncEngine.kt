@@ -23,12 +23,15 @@ class SyncEngine(private val context: Context) {
     private val database by lazy { com.hwnix.cash.core.di.ServiceLocator.database }
     private val smsDao by lazy { database.smsDao() }
     private val apiService by lazy { com.hwnix.cash.core.di.ServiceLocator.apiService }
-    private val syncMutex = Mutex()
-
     companion object {
         private const val TAG = "SyncEngine"
         // مفتاح تفعيل/تعطيل سحب وإرسال الأوامر الصادرة من السيرفر مؤقتاً لتوفير الطاقة الحاد بدون حذف الكود
         const val ENABLE_PULL_SERVER_COMMANDS = true
+        // تحديد المدة الافتراضية للرجوع للوراء عند أول عملية مزامنة (بالأيام)
+        const val INITIAL_SYNC_DAYS_BACK = 3
+        
+        // قفل عام لمنع التداخل حتى عند تعدد نسخ المحرك (Worker/Service)
+        val syncMutex = Mutex()
     }
 
     /**
@@ -352,8 +355,12 @@ class SyncEngine(private val context: Context) {
         val lastCheckTime = sessionManager.getLastIncomingSmsCheckTime()
         val currentTime = System.currentTimeMillis()
         
-        // إذا كانت أول مرة بعد التثبيت (lastCheckTime == 0L)، نفحص من البداية (date = 0) لمزامنة كافة الرسائل القديمة بالكامل
-        val sinceTime = if (lastCheckTime == 0L) 0L else lastCheckTime
+        // إذا كانت أول مرة بعد التثبيت (lastCheckTime == 0L)، نفحص من فترة محددة لمزامنة الرسائل القديمة جزئياً
+        val sinceTime = if (lastCheckTime == 0L) {
+            currentTime - (INITIAL_SYNC_DAYS_BACK * 24 * 60 * 60 * 1000L)
+        } else {
+            lastCheckTime
+        }
         
         Log.i(TAG, "Scanning system inbox for incoming SMS since timestamp: $sinceTime")
         sendRemoteLog("TRACE_INBOX_SCAN", "Scanning system inbox since: $sinceTime")

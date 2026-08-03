@@ -16,6 +16,7 @@ import com.hwnix.cash.core.di.ServiceLocator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 
 data class CompanyItem(val id: Long, val name: String)
 
@@ -70,12 +71,17 @@ class CompanySelectionViewModel : ViewModel() {
     }
 
     fun selectCompany(companyId: Long) {
-        val oldId = sessionManager.getCompanyId()
-        if (oldId != companyId) {
-            // Clear old cache and reload settings
-            sessionManager.saveCompanyId(companyId)
-            _selectedCompanyId.value = companyId
-            // TODO: Triggers clear cache and reload settings globally
+        viewModelScope.launch {
+            // نستخدم قفل المزامنة لمنع تغيير الشركة أثناء رفع الرسائل أو الأوامر
+            com.hwnix.cash.data.local.SyncEngine.syncMutex.withLock {
+                val oldId = sessionManager.getCompanyId()
+                if (oldId != companyId) {
+                    // Clear old cache and reload settings
+                    sessionManager.saveCompanyId(companyId)
+                    _selectedCompanyId.value = companyId
+                    // TODO: Triggers clear cache and reload settings globally
+                }
+            }
         }
     }
 }
