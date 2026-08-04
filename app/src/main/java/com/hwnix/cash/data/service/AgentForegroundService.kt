@@ -219,7 +219,9 @@ class AgentForegroundService : Service() {
             val health = com.hwnix.cash.data.local.ServiceHealthMonitor.getHealth()
 
             val notificationTitle = "${health.overallHealth.icon} ${health.overallHealth.label}"
+            val linesSummaryText = if (::sessionManager.isInitialized) sessionManager.getLinesSummary() else ""
             val limitAlertsSummary = if (::sessionManager.isInitialized) sessionManager.getLimitAlertsSummary() else ""
+            
             val notificationText = if (limitAlertsSummary.isNotEmpty()) {
                 "⚠️ $limitAlertsSummary | ${health.statusMessage}"
             } else {
@@ -257,7 +259,13 @@ class AgentForegroundService : Service() {
                 .setLocalOnly(true)
                 .setColor(health.overallHealth.colorHex)
                 .setColorized(true)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setSound(null)
+                .setVibrate(null)
+
+            if (linesSummaryText.isNotBlank()) {
+                builder.setStyle(NotificationCompat.BigTextStyle().bigText("$notificationText\n\n📊 استهلاك شرائح المحافظ:\n$linesSummaryText"))
+            }
 
             val notification = builder.build().apply {
                 flags = flags or android.app.Notification.FLAG_ONGOING_EVENT or android.app.Notification.FLAG_NO_CLEAR
@@ -361,9 +369,11 @@ class AgentForegroundService : Service() {
             val serviceChannel = NotificationChannel(
                 CHANNEL_ID,
                 "HWNix Gateway Service Channel",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_LOW
             ).apply {
-                setShowBadge(true)
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
             val manager = getSystemService(NotificationManager::class.java)

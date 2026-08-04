@@ -88,11 +88,21 @@ class DeviceRepositoryImpl(
 
     override suspend fun syncLines(simCards: List<SimCard>): Result<Unit> {
         return try {
+            var deviceId = sessionManager.getDeviceId()
+            if (deviceId <= 0) {
+                val regRes = registerDevice()
+                if (regRes.isSuccess) {
+                    deviceId = regRes.getOrThrow()
+                } else {
+                    return Result.failure(regRes.exceptionOrNull() ?: Exception("فشل تسجيل الجهاز لدى السيرفر"))
+                }
+            }
+
             val linesArray = JsonArray()
             simCards.forEach { card ->
                 val lineObj = JsonObject().apply {
                     addProperty("slot_index", card.slotIndex)
-                    addProperty("subscription_id", card.subscriptionId)
+                    addProperty("subscription_id", card.subscriptionId.ifBlank { "-1" })
                     addProperty("carrier", card.carrier)
                     addProperty("phone_number", card.phoneNumber)
                     addProperty("mcc", card.mcc)
@@ -102,7 +112,7 @@ class DeviceRepositoryImpl(
             }
 
             val payload = JsonObject().apply {
-                addProperty("device_id", sessionManager.getDeviceId())
+                addProperty("device_id", deviceId)
                 val customName = sessionManager.getGatewayName()
                 if (customName.isNotBlank()) {
                     addProperty("device_name", customName)

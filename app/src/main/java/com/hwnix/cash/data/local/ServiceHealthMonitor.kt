@@ -21,7 +21,9 @@ data class ServiceHealth(
     val isServiceRunning: Boolean = false,
     val isForegroundActive: Boolean = false,
     val isSyncLoopRunning: Boolean = false,
-    val isInternetAvailable: Boolean = true,
+    val isInternetAvailable: Boolean = false,
+    val isServerReachable: Boolean = true,
+    val pendingSmsCount: Int = 0,
     val lastSuccessfulSyncTime: Long = 0L,
     val lastHeartbeatTime: Long = 0L,
     val lastPollTime: Long = 0L,
@@ -52,6 +54,8 @@ object ServiceHealthMonitor {
         isForegroundActive: Boolean? = null,
         isSyncLoopRunning: Boolean? = null,
         isInternetAvailable: Boolean? = null,
+        isServerReachable: Boolean? = null,
+        pendingSmsCount: Int? = null,
         lastSuccessfulSyncTime: Long? = null,
         lastHeartbeatTime: Long? = null,
         lastPollTime: Long? = null,
@@ -69,6 +73,8 @@ object ServiceHealthMonitor {
         val newForegroundActive = isForegroundActive ?: old.isForegroundActive
         val newSyncLoopRunning = isSyncLoopRunning ?: old.isSyncLoopRunning
         val newInternetAvailable = isInternetAvailable ?: old.isInternetAvailable
+        val newServerReachable = isServerReachable ?: old.isServerReachable
+        val newPendingCount = pendingSmsCount ?: old.pendingSmsCount
         val newLastSync = lastSuccessfulSyncTime ?: old.lastSuccessfulSyncTime
         val newLastHeartbeat = lastHeartbeatTime ?: old.lastHeartbeatTime
         val newLastPoll = lastPollTime ?: old.lastPollTime
@@ -80,11 +86,13 @@ object ServiceHealthMonitor {
 
         val calculatedHealth = when {
             !newServiceRunning || !newForegroundActive -> ServiceHealthState.BROKEN
-            !newInternetAvailable -> ServiceHealthState.WARNING // تحذير: لا يوجد اتصال بالإنترنت
+            !newInternetAvailable -> ServiceHealthState.BROKEN // أحمر: لا يوجد اتصال بالإنترنت
+            !newServerReachable -> ServiceHealthState.WARNING // برتقالي: تعذر الوصول للسيرفر
+            newPendingCount > 0 -> ServiceHealthState.DEGRADED // أصفر: توجد رسائل معلقة بانتظار المزامنة
             newFailures >= 3 -> ServiceHealthState.BROKEN
             newFailures >= 1 -> ServiceHealthState.DEGRADED
-            timeSinceLastSync > 600 && newLastSync > 0 -> ServiceHealthState.WARNING // لم تتم المزامنة لأكثر من 10 دقائق
-            else -> ServiceHealthState.HEALTHY
+            timeSinceLastSync > 600 && newLastSync > 0 -> ServiceHealthState.WARNING
+            else -> ServiceHealthState.HEALTHY // أخضر: الخدمة تعمل بصورة طبيعية
         }
 
         val secSinceSync = if (newLastSync > 0) (now - newLastSync) / 1000 else 0
@@ -96,17 +104,20 @@ object ServiceHealthMonitor {
         }
 
         val formattedMessage = when {
+            !newServiceRunning || !newForegroundActive -> {
+                "🔴 الخدمة متوقفة"
+            }
             !newInternetAvailable -> {
-                "المزامنة متوقفة — لا يوجد اتصال بالإنترنت"
+                "🔴 لا يوجد اتصال بالإنترنت"
+            }
+            !newServerReachable -> {
+                "🟠 تعذّر الوصول لسيرفر النظام"
+            }
+            newPendingCount > 0 -> {
+                "🟡 متصل (توجد $newPendingCount رسائل بانتظار المزامنة)"
             }
             calculatedHealth == ServiceHealthState.HEALTHY -> {
-                "متصل — الخدمة تعمل بنجاح ($lastSyncStr)"
-            }
-            calculatedHealth == ServiceHealthState.DEGRADED -> {
-                "جاري إعادة الاتصال والمزامنة..."
-            }
-            calculatedHealth == ServiceHealthState.WARNING -> {
-                "تأخر المزامنة — جاري المحاولة تلقائياً"
+                "🟢 متصل والخدمة تعمل بصورة طبيعية ($lastSyncStr)"
             }
             else -> {
                 "جاري تهيئة خدمات بوابة الرسائل..."
@@ -118,6 +129,8 @@ object ServiceHealthMonitor {
             isForegroundActive = newForegroundActive,
             isSyncLoopRunning = newSyncLoopRunning,
             isInternetAvailable = newInternetAvailable,
+            isServerReachable = newServerReachable,
+            pendingSmsCount = newPendingCount,
             lastSuccessfulSyncTime = newLastSync,
             lastHeartbeatTime = newLastHeartbeat,
             lastPollTime = newLastPoll,

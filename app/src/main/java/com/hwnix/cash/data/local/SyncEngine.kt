@@ -434,84 +434,124 @@ class SyncEngine(private val context: Context) {
     }
 
     /**
-     * رفع الرسائل الواردة المخزنة محلياً بنظام الدفعات والمطابقة (Batch upload).
+     * رفع الرسائل الواردة المخزنة محلياً بنظام الدفعات المتسلسلة (Chunked Batch Loop).
      */
     private suspend fun uploadPendingIncomingSms(): Boolean = withContext(Dispatchers.IO) {
-        val pending = smsDao.getPendingUploads()
-        if (pending.isEmpty()) {
-            Log.i(TAG, "No pending SMS to upload.")
-            BootTracker.updateStage(context, "TRACE_SYNC: No pending SMS to upload")
-            return@withContext true
-        }
-
-        Log.i(TAG, "Found ${pending.size} pending SMS to upload.")
-        BootTracker.updateStage(context, "TRACE_SYNC: Found ${pending.size} pending SMS to upload")
-
+        var totalUploaded = 0
+        val batchSize = 25
         val deviceId = sessionManager.getDeviceId()
-        val array = JsonArray()
 
-        pending.forEach { sms ->
-            // تحويل الـ timestamp من Long millis إلى ISO 8601
-            val sentAtIso = try {
-                val date = java.util.Date(sms.sentAt)
-                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
-                sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
-                sdf.format(date)
-            } catch (e: Exception) {
-                null
+        while (true) {
+            val pending = smsDao.getPendingUploadsChunk(batchSize)
+            if (pending.isEmpty()) {
+                if (totalUploaded == 0) {
+                    Log.i(TAG, "No pending SMS to upload.")
+                    BootTracker.updateStage(context, "TRACE_SYNC: No pending SMS to upload")
+                } else {
+                    Log.i(TAG, "All pending SMS chunks uploaded successfully ($totalUploaded total).")
+                    BootTracker.updateStage(context, "TRACE_SYNC: All pending SMS chunks uploaded ($totalUploaded total)")
+                }
+                return@withContext true
             }
 
-            val contactName = com.hwnix.cash.data.local.SmsImportManager.getContactName(context, sms.phoneNumber)
+            Log.i(TAG, "Uploading chunk of ${pending.size} pending SMS...")
+            BootTracker.updateStage(context, "TRACE_SYNC: Uploading chunk of ${pending.size} pending SMS")
 
-            val obj = JsonObject().apply {
-                addProperty("subscription_id", sms.subscriptionId)
-                addProperty("phone_number", sms.phoneNumber)
-                addProperty("message_body", sms.messageBody)
-                addProperty("message_ref", sms.messageRef)
-                if (!contactName.isNullOrEmpty()) addProperty("contact_name", contactName)
-                if (sentAtIso != null) addProperty("sent_at", sentAtIso)
+            val array = JsonArray()
+
+            pending.forEach { sms ->
+                val sentAtIso = try {
+                    val date = java.util.Date(sms.sentAt)
+                    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
+                    sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    sdf.format(date)
+                } catch (e: Exception) {
+                    null
+                }
+
+                val contactName = com.hwnix.cash.data.local.SmsImportManager.getContactName(context, sms.phoneNumber)
+
+                val obj = JsonObject().apply {
+                    addProperty("subscription_id", sms.subscriptionId)
+                    addProperty("phone_number", sms.phoneNumber)
+                    addProperty("message_body", sms.messageBody)
+                    addProperty("message_ref", sms.messageRef)
+                    if (!contactName.isNullOrEmpty()) addProperty("contact_name", contactName)
+                    if (sentAtIso != null) addProperty("sent_at", sentAtIso)
+                }
+
+                Log.d(TAG, "Preparing SMS for upload: ref=${sms.messageRef}, from=${sms.phoneNumber}, sub=${sms.subscriptionId}, sentAt=$sentAtIso")
+                array.add(obj)
             }
 
-            Log.d(TAG, "Preparing SMS for upload: ref=${sms.messageRef}, from=${sms.phoneNumber}, sub=${sms.subscriptionId}, sentAt=$sentAtIso")
-            array.add(obj)
-        }
+            val payload = JsonObject().apply {
+                addProperty("device_id", deviceId)
+                add("messages", array)
+            }
 
-        val payload = JsonObject().apply {
-            addProperty("device_id", deviceId)
-            add("messages", array)
-        }
+            val idempotencyKey = "BATCH_SYNC_" + System.currentTimeMillis() + "_" + (1000..9999).random()
 
-        Log.d(TAG, "Sending batchSync payload: $payload")
+            try {
+                val response = apiService.batchSyncSms(idempotencyKey, payload)
+                Log.d(TAG, "batchSync response code: ${response.code()}")
 
-        // استخدام UUID فريد للدورة كـ Idempotency-Key
-        val idempotencyKey = "BATCH_SYNC_" + System.currentTimeMillis()
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    Log.d(TAG, "batchSync response body: $body")
+                    if (body.get("status")?.asBoolean == true) {
+                        pending.forEach { sms ->
+                            smsDao.update(sms.copy(status = "uploaded"))
+                        }
+                        totalUploaded += pending.size
 
-        try {
-            val response = apiService.batchSyncSms(idempotencyKey, payload)
-            Log.d(TAG, "batchSync response code: ${response.code()}")
+                        // استخراج ملخص الحدود المستهلكة للخطوط إذا تضمنتها الاستجابة
+                        if (body.has("data") && body.getAsJsonObject("data").has("lines_summary")) {
+                            val dataObj = body.getAsJsonObject("data")
+                            val linesArray = dataObj.getAsJsonArray("lines_summary")
+                            if (linesArray != null && linesArray.size() > 0) {
+                                val summaryBuilder = StringBuilder()
+                                for (i in 0 until linesArray.size()) {
+                                    val line = linesArray.get(i).asJsonObject
+                                    val phone = line.get("phone_number")?.asString ?: "خط ${i+1}"
+                                    val carrier = line.get("carrier")?.asString ?: ""
+                                    val dailyUsed = line.get("daily_deposit_used")?.asDouble ?: 0.0
+                                    val dailyLimit = line.get("daily_deposit_limit")?.asDouble ?: 0.0
+                                    val monthlyUsed = line.get("monthly_deposit_used")?.asDouble ?: 0.0
+                                    val monthlyLimit = line.get("monthly_deposit_limit")?.asDouble ?: 0.0
 
-            if (response.isSuccessful && response.body() != null) {
-                val body = response.body()!!
-                Log.d(TAG, "batchSync response body: $body")
-                if (body.get("status")?.asBoolean == true) {
-                    // تحديث الرسائل محلياً إلى uploaded
-                    pending.forEach { sms ->
-                        smsDao.update(sms.copy(status = "uploaded"))
+                                    if (i > 0) summaryBuilder.append("\n")
+                                    val header = if (carrier.isNotBlank()) "$phone ($carrier)" else phone
+                                    val dailyStr = if (dailyLimit > 0) "يومي: ${dailyUsed.toInt()} / ${dailyLimit.toInt()} ج.م" else "يومي: ${dailyUsed.toInt()} ج.م"
+                                    val monthlyStr = if (monthlyLimit > 0) "شهري: ${monthlyUsed.toInt()} / ${monthlyLimit.toInt()} ج.م" else "شهري: ${monthlyUsed.toInt()} ج.م"
+                                    summaryBuilder.append("$header\n• $dailyStr\n• $monthlyStr")
+                                }
+                                val linesSummaryText = summaryBuilder.toString()
+                                sessionManager.saveLinesSummary(linesSummaryText)
+                                Log.i(TAG, "Updated lines summary from batchSync: $linesSummaryText")
+                            }
+                        }
+
+                        Log.i(TAG, "Synced chunk of ${pending.size} messages successfully. Total so far: $totalUploaded")
+                        continue
+                    } else {
+                        val errorMsg = body.get("message")?.asString ?: "Status false returned"
+                        Log.e(TAG, "batchSync failed: $errorMsg")
+                        return@withContext false
                     }
-                    Log.i(TAG, "Synced ${pending.size} incoming messages successfully.")
-                    return@withContext true
+                } else {
+                    if (handleDeviceVerification(response.code())) {
+                        continue
+                    }
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "batchSync failed - code: ${response.code()}, error: $errorBody")
+                    return@withContext false
                 }
-            } else {
-                if (handleDeviceVerification(response.code())) {
-                    return@withContext uploadPendingIncomingSms()
-                }
-                val errorBody = response.errorBody()?.string()
-                Log.e(TAG, "batchSync failed - code: ${response.code()}, error: $errorBody")
+            } catch (e: Exception) {
+                Log.e(TAG, "Batch sync upload failed: ${e.message}", e)
+                return@withContext false
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Batch sync upload failed: ${e.message}", e)
         }
-        return@withContext false
+        return@withContext true
     }
 
     /**

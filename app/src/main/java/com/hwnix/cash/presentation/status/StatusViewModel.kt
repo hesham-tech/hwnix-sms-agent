@@ -89,39 +89,44 @@ class StatusViewModel(
     }
 
     fun refreshDeviceInfo() {
-        val deviceIdVal = sessionManager.getDeviceId().let { id ->
-            if (id == -1L) "غير مسجل" else id.toString()
-        }
-        val isFirstSetupVal = !sessionManager.isSetupComplete()
-        
-        val health = com.hwnix.cash.data.local.ServiceHealthMonitor.getHealth()
-        val lastSyncTime = sessionManager.getLastSyncSuccessTime()
-        val isRecentSync = lastSyncTime > 0L || sessionManager.getAuthToken() != null
-        
-        val connStatus = when {
-            sessionManager.getAuthToken() == null -> "غير متصل"
-            !health.isInternetAvailable -> "غير متصل (لا يوجد إنترنت)"
-            health.overallHealth == com.hwnix.cash.data.local.ServiceHealthState.BROKEN -> "غير متصل (الخدمة متوقفة)"
-            health.isInternetAvailable -> "متصل"
-            else -> "غير متصل"
-        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val deviceIdVal = sessionManager.getDeviceId().let { id ->
+                if (id == -1L) "غير مسجل" else id.toString()
+            }
+            val isFirstSetupVal = !sessionManager.isSetupComplete()
+            
+            val health = com.hwnix.cash.data.local.ServiceHealthMonitor.getHealth()
+            val lastSyncTime = sessionManager.getLastSyncSuccessTime()
+            
+            val connStatus = when {
+                sessionManager.getAuthToken() == null -> "🔴 غير متصل"
+                !health.isInternetAvailable -> "🔴 غير متصل (لا يوجد إنترنت)"
+                !health.isServerReachable -> "🟠 تعذّر الوصول للسيرفر"
+                health.overallHealth == com.hwnix.cash.data.local.ServiceHealthState.BROKEN -> "🔴 غير متصل (الخدمة متوقفة)"
+                health.pendingSmsCount > 0 -> "🟡 متصل (توجد ${health.pendingSmsCount} رسائل معلقة)"
+                health.isInternetAvailable -> "🟢 متصل"
+                else -> "🔴 غير متصل"
+            }
 
-        _uiState.update {
-            it.copy(
-                connectionStatus = connStatus,
-                deviceId = deviceIdVal,
-                deviceUuid = sessionManager.getDeviceUuid(),
-                configVersion = sessionManager.getConfigVersion().toString(),
-                gatewayName = sessionManager.getGatewayName(),
-                isFirstSetup = isFirstSetupVal,
-                isBatteryOptimized = batteryManager.isBatteryOptimizationActive(),
-                isAutostartAvailable = batteryManager.isAutostartAvailable()
-            )
-        }
-        
-        // إذا لم يتم الإعداد بعد الدخول لأول مرة
-        if (isFirstSetupVal && sessionManager.getAuthToken() != null) {
-            openSimSetupDialog()
+            _uiState.update {
+                it.copy(
+                    connectionStatus = connStatus,
+                    deviceId = deviceIdVal,
+                    deviceUuid = sessionManager.getDeviceUuid(),
+                    configVersion = sessionManager.getConfigVersion().toString(),
+                    gatewayName = sessionManager.getGatewayName(),
+                    isFirstSetup = isFirstSetupVal,
+                    isBatteryOptimized = batteryManager.isBatteryOptimizationActive(),
+                    isAutostartAvailable = batteryManager.isAutostartAvailable()
+                )
+            }
+            
+            // إذا لم يتم الإعداد بعد الدخول لأول مرة
+            if (isFirstSetupVal && sessionManager.getAuthToken() != null) {
+                withContext(Dispatchers.Main) {
+                    openSimSetupDialog()
+                }
+            }
         }
     }
 
@@ -287,6 +292,8 @@ class StatusViewModel(
         val state = _uiState.value
         _uiState.update { it.copy(isSavingSims = true, simSaveResult = null) }
         viewModelScope.launch {
+            sessionManager.saveGatewayName(state.gatewayName)
+
             val cards = state.detectedSims.map { sim ->
                 sim.copy(
                     carrier = state.simCarrierInputs[sim.slotIndex]?.ifBlank { "Unknown" } ?: "Unknown",
@@ -296,7 +303,6 @@ class StatusViewModel(
 
             val syncResult = deviceRepository.syncLines(cards)
             if (syncResult.isSuccess) {
-                sessionManager.saveGatewayName(state.gatewayName)
                 sessionManager.markSetupComplete()
                 _uiState.update {
                     it.copy(

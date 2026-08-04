@@ -17,6 +17,9 @@ interface SmsDao {
     @Query("SELECT * FROM sms_cache WHERE status = 'pending_upload' ORDER BY createdAt ASC")
     suspend fun getPendingUploads(): List<SmsEntity>
 
+    @Query("SELECT * FROM sms_cache WHERE status = 'pending_upload' ORDER BY createdAt ASC LIMIT :limit")
+    suspend fun getPendingUploadsChunk(limit: Int = 25): List<SmsEntity>
+
     @Query("SELECT EXISTS(SELECT * FROM sms_cache WHERE messageRef = :messageRef AND direction = 'incoming')")
     suspend fun exists(messageRef: String): Boolean
 

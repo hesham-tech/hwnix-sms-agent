@@ -197,6 +197,14 @@ class SessionManager(context: Context) {
         sharedPreferences.edit().putString(KEY_LIMIT_ALERTS_SUMMARY, summary).apply()
     }
 
+    fun getLinesSummary(): String {
+        return sharedPreferences.getString("lines_summary", "") ?: ""
+    }
+
+    fun saveLinesSummary(summary: String) {
+        sharedPreferences.edit().putString("lines_summary", summary).apply()
+    }
+
     fun getCompanyId(): Long {
         return sharedPreferences.getLong(KEY_COMPANY_ID, -1L)
     }
