@@ -504,26 +504,29 @@ class SyncEngine(private val context: Context) {
                         }
                         totalUploaded += pending.size
 
-                        // استخراج ملخص الحدود المستهلكة للخطوط إذا تضمنتها الاستجابة
+                        // استخراج ملخص الحدود المستهلكة للخطوط إذا تضمنتها الاستجابة وتنسيقها بشكل رفيع ومدمج
                         if (body.has("data") && body.getAsJsonObject("data").has("lines_summary")) {
                             val dataObj = body.getAsJsonObject("data")
                             val linesArray = dataObj.getAsJsonArray("lines_summary")
                             if (linesArray != null && linesArray.size() > 0) {
                                 val summaryBuilder = StringBuilder()
+                                val isMultiSim = linesArray.size() > 1
                                 for (i in 0 until linesArray.size()) {
                                     val line = linesArray.get(i).asJsonObject
                                     val phone = line.get("phone_number")?.asString ?: "خط ${i+1}"
-                                    val carrier = line.get("carrier")?.asString ?: ""
                                     val dailyUsed = line.get("daily_deposit_used")?.asDouble ?: 0.0
                                     val dailyLimit = line.get("daily_deposit_limit")?.asDouble ?: 0.0
                                     val monthlyUsed = line.get("monthly_deposit_used")?.asDouble ?: 0.0
                                     val monthlyLimit = line.get("monthly_deposit_limit")?.asDouble ?: 0.0
 
                                     if (i > 0) summaryBuilder.append("\n")
-                                    val header = if (carrier.isNotBlank()) "$phone ($carrier)" else phone
-                                    val dailyStr = if (dailyLimit > 0) "يومي: ${dailyUsed.toInt()} / ${dailyLimit.toInt()} ج.م" else "يومي: ${dailyUsed.toInt()} ج.م"
-                                    val monthlyStr = if (monthlyLimit > 0) "شهري: ${monthlyUsed.toInt()} / ${monthlyLimit.toInt()} ج.م" else "شهري: ${monthlyUsed.toInt()} ج.م"
-                                    summaryBuilder.append("$header\n• $dailyStr\n• $monthlyStr")
+                                    val prefix = if (isMultiSim) "📱${i + 1}: " else "📱 "
+                                    val dailyCompact = "${formatCompactAmount(dailyUsed)}/${formatCompactAmount(dailyLimit)}" +
+                                            if (dailyLimit > 0) " " + generateSlimProgressBar(dailyUsed, dailyLimit) else ""
+                                    val monthlyCompact = "${formatCompactAmount(monthlyUsed)}/${formatCompactAmount(monthlyLimit)}" +
+                                            if (monthlyLimit > 0) " " + generateSlimProgressBar(monthlyUsed, monthlyLimit) else ""
+
+                                    summaryBuilder.append("$prefix$phone • ☀️ $dailyCompact • 🌙 $monthlyCompact")
                                 }
                                 val linesSummaryText = summaryBuilder.toString()
                                 sessionManager.saveLinesSummary(linesSummaryText)
@@ -834,5 +837,27 @@ class SyncEngine(private val context: Context) {
                 Log.e(TAG, "Failed to send remote log: ${e.message}")
             }
         }
+    }
+
+    private fun formatCompactAmount(amount: Double): String {
+        if (amount <= 0) return "0"
+        return if (amount >= 1000) {
+            val kVal = amount / 1000.0
+            if (kVal == kVal.toInt().toDouble()) {
+                "${kVal.toInt()}k"
+            } else {
+                String.format(java.util.Locale.US, "%.1fk", kVal)
+            }
+        } else {
+            "${amount.toInt()}"
+        }
+    }
+
+    private fun generateSlimProgressBar(used: Double, limit: Double, totalBlocks: Int = 5): String {
+        if (limit <= 0) return "▰▰▰▰▰"
+        val ratio = (used / limit).coerceIn(0.0, 1.0)
+        val filled = (ratio * totalBlocks).toInt().coerceIn(0, totalBlocks)
+        val empty = totalBlocks - filled
+        return "▰".repeat(filled) + "▱".repeat(empty)
     }
 }

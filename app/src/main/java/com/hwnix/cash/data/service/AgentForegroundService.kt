@@ -218,14 +218,15 @@ class AgentForegroundService : Service() {
             createNotificationChannel()
             val health = com.hwnix.cash.data.local.ServiceHealthMonitor.getHealth()
 
-            val notificationTitle = "${health.overallHealth.icon} ${health.overallHealth.label}"
+            val notificationTitle = "🟢 كاش هونكس"
             val linesSummaryText = if (::sessionManager.isInitialized) sessionManager.getLinesSummary() else ""
             val limitAlertsSummary = if (::sessionManager.isInitialized) sessionManager.getLimitAlertsSummary() else ""
             
-            val notificationText = if (limitAlertsSummary.isNotEmpty()) {
-                "⚠️ $limitAlertsSummary | ${health.statusMessage}"
-            } else {
-                health.statusMessage
+            val firstLineSummary = linesSummaryText.lines().firstOrNull { it.isNotBlank() } ?: ""
+            val notificationText = when {
+                limitAlertsSummary.isNotEmpty() -> "⚠️ $limitAlertsSummary"
+                firstLineSummary.isNotEmpty() -> firstLineSummary
+                else -> health.statusMessage
             }
             val now = System.currentTimeMillis()
 
@@ -264,7 +265,12 @@ class AgentForegroundService : Service() {
                 .setVibrate(null)
 
             if (linesSummaryText.isNotBlank()) {
-                builder.setStyle(NotificationCompat.BigTextStyle().bigText("$notificationText\n\n📊 استهلاك شرائح المحافظ:\n$linesSummaryText"))
+                val expandedBody = if (limitAlertsSummary.isNotEmpty()) {
+                    "⚠️ $limitAlertsSummary\n$linesSummaryText"
+                } else {
+                    linesSummaryText
+                }
+                builder.setStyle(NotificationCompat.BigTextStyle().bigText(expandedBody))
             }
 
             val notification = builder.build().apply {
