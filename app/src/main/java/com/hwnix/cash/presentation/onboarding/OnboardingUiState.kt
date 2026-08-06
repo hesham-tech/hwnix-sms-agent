@@ -4,10 +4,16 @@ import com.hwnix.cash.domain.model.SimCard
 
 data class OnboardingUiState(
     val currentStep: Int = 1,
-    // Step 1: Discovery
+    
+    // Step 1: SIM Lines Setup
     val availableSims: List<SimCard> = emptyList(),
     val recentSenders: List<String> = emptyList(),
     val isDiscovering: Boolean = true,
+    val line1Name: String = "",
+    val line1Phone: String = "",
+    val line2Name: String = "",
+    val line2Phone: String = "",
+    val isDualSim: Boolean = false,
     
     // Step 2: Wallet Details
     val walletName: String = "",

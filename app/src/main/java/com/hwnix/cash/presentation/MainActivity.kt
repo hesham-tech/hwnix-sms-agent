@@ -251,14 +251,40 @@ class MainActivity : ComponentActivity() {
                         }
 
                         var currentScreen by remember { mutableStateOf("status") }
+                        val screenStack = remember { mutableStateListOf<String>() }
+
+                        fun navigateTo(screen: String) {
+                            if (currentScreen != screen) {
+                                screenStack.add(currentScreen)
+                                currentScreen = screen
+                            }
+                        }
+
+                        fun popBackStack(): Boolean {
+                            if (screenStack.isNotEmpty()) {
+                                currentScreen = screenStack.removeAt(screenStack.size - 1)
+                                return true
+                            }
+                            return false
+                        }
+
+                        androidx.activity.compose.BackHandler(enabled = currentScreen != "status") {
+                            if (!popBackStack()) {
+                                currentScreen = "status"
+                            }
+                        }
 
                         // Check if we need to force company selection
                         LaunchedEffect(isLoggedIn) {
                             if (isLoggedIn && sessionManager.getCompanyId() == -1L) {
-                                currentScreen = "company_selection"
+                                navigateTo("company_selection")
                             } else if (isLoggedIn) {
                                 statusViewModel.checkWallets { hasWallets ->
-                                    currentScreen = if (hasWallets) "status" else "onboarding_wizard"
+                                    if (hasWallets) {
+                                        currentScreen = "status"
+                                    } else {
+                                        navigateTo("onboarding_wizard")
+                                    }
                                 }
                             }
                         }
@@ -273,13 +299,13 @@ class MainActivity : ComponentActivity() {
                             updateStatusMessage = statusState.updateStatusMessage,
                             currentScreen = currentScreen,
                             onNavigateToScreen = { screen ->
-                                currentScreen = screen
+                                navigateTo(screen)
                                 coroutineScope.launch { drawerState.close() }
                             },
                             onInstallLocalApk = { statusViewModel.installLocalApk(it) },
                             onCheckForUpdate = { statusViewModel.checkForUpdate(currentVersionCode) },
-                             onLogoutClick = { statusViewModel.logout { isLoggedIn = false; currentScreen = "status" } },
-                             onDecoupleClick = { statusViewModel.logout { isLoggedIn = false; currentScreen = "status" } }
+                             onLogoutClick = { statusViewModel.logout { isLoggedIn = false; screenStack.clear(); currentScreen = "status" } },
+                             onDecoupleClick = { statusViewModel.logout { isLoggedIn = false; screenStack.clear(); currentScreen = "status" } }
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 if (currentScreen == "diagnostics") {
@@ -289,7 +315,11 @@ class MainActivity : ComponentActivity() {
                                         onNavigateNext = {
                                             statusViewModel.performFullSync(syncEngine)
                                             statusViewModel.checkWallets { hasWallets ->
-                                                currentScreen = if (hasWallets) "status" else "onboarding_wizard"
+                                                if (hasWallets) {
+                                                    currentScreen = "status"
+                                                } else {
+                                                    navigateTo("onboarding_wizard")
+                                                }
                                             }
                                         }
                                     )
@@ -298,11 +328,12 @@ class MainActivity : ComponentActivity() {
                                     val onboardingViewModel: com.hwnix.cash.presentation.onboarding.OnboardingViewModel = ViewModelProvider(this@MainActivity, factoryOnboarding)[com.hwnix.cash.presentation.onboarding.OnboardingViewModel::class.java]
                                     com.hwnix.cash.presentation.onboarding.OnboardingWizardScreen(
                                         viewModel = onboardingViewModel,
-                                        onSuccess = { currentScreen = "onboarding_success" }
+                                        onSuccess = { screenStack.clear(); currentScreen = "onboarding_success" },
+                                        onBackToMain = { if (!popBackStack()) currentScreen = "status" }
                                     )
                                 } else if (currentScreen == "onboarding_success") {
                                     com.hwnix.cash.presentation.onboarding.SuccessScreen(
-                                        onFinish = { currentScreen = "status" }
+                                        onFinish = { screenStack.clear(); currentScreen = "status" }
                                     )
                                 } else {
                                     StatusScreen(
@@ -313,7 +344,7 @@ class MainActivity : ComponentActivity() {
                                         onBatteryOptimizeClick = {
                                             statusViewModel.disableBatteryOptimization()
                                         },
-                                        onAddWalletClick = { currentScreen = "onboarding_wizard" }
+                                        onAddWalletClick = { navigateTo("onboarding_wizard") }
                                     )
                                 }
                                 IconButton(

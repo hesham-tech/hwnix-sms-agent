@@ -218,7 +218,7 @@ class AgentForegroundService : Service() {
             createNotificationChannel()
             val health = com.hwnix.cash.data.local.ServiceHealthMonitor.getHealth()
 
-            val notificationTitle = "🟢 كاش هونكس"
+            val notificationTitle = "🟢 الخدمة نشطة"
             val linesSummaryText = if (::sessionManager.isInitialized) sessionManager.getLinesSummary() else ""
             val limitAlertsSummary = if (::sessionManager.isInitialized) sessionManager.getLimitAlertsSummary() else ""
             

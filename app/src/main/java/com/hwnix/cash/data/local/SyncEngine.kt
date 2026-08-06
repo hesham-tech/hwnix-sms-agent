@@ -520,13 +520,13 @@ class SyncEngine(private val context: Context) {
                                     val monthlyLimit = line.get("monthly_deposit_limit")?.asDouble ?: 0.0
 
                                     if (i > 0) summaryBuilder.append("\n")
-                                    val prefix = if (isMultiSim) "📱${i + 1}: " else "📱 "
-                                    val dailyCompact = "${formatCompactAmount(dailyUsed)}/${formatCompactAmount(dailyLimit)}" +
+                                    val prefix = if (isMultiSim) "📱 خط ${i + 1}: " else "📱 "
+                                    val dailyCompact = "${formatCompactAmount(dailyUsed)} / ${formatCompactAmount(dailyLimit)}" +
                                             if (dailyLimit > 0) " " + generateSlimProgressBar(dailyUsed, dailyLimit) else ""
-                                    val monthlyCompact = "${formatCompactAmount(monthlyUsed)}/${formatCompactAmount(monthlyLimit)}" +
+                                    val monthlyCompact = "${formatCompactAmount(monthlyUsed)} / ${formatCompactAmount(monthlyLimit)}" +
                                             if (monthlyLimit > 0) " " + generateSlimProgressBar(monthlyUsed, monthlyLimit) else ""
 
-                                    summaryBuilder.append("$prefix$phone • ☀️ $dailyCompact • 🌙 $monthlyCompact")
+                                    summaryBuilder.append("$prefix$phone\n📅 $dailyCompact    🗓️ $monthlyCompact")
                                 }
                                 val linesSummaryText = summaryBuilder.toString()
                                 sessionManager.saveLinesSummary(linesSummaryText)

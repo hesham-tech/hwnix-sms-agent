@@ -1,5 +1,6 @@
 package com.hwnix.cash.presentation.onboarding
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,9 +23,19 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun OnboardingWizardScreen(
     viewModel: OnboardingViewModel,
-    onSuccess: () -> Unit
+    onSuccess: () -> Unit,
+    onBackToMain: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    // التعامل مع زر الرجوع
+    BackHandler(enabled = true) {
+        if (state.currentStep > 1) {
+            viewModel.previousStep()
+        } else {
+            onBackToMain?.invoke()
+        }
+    }
 
     LaunchedEffect(state.isSuccess) {
         if (state.isSuccess) {
@@ -76,7 +87,7 @@ fun OnboardingWizardScreen(
                     .verticalScroll(rememberScrollState())
                 ) {
                     when (step) {
-                        1 -> StepDiscovery(state)
+                        1 -> StepLinesSetup(state, viewModel)
                         2 -> StepWalletDetails(state, viewModel)
                         3 -> StepLimits(state, viewModel)
                         4 -> StepReview(state)
@@ -92,6 +103,10 @@ fun OnboardingWizardScreen(
                 if (state.currentStep > 1) {
                     OutlinedButton(onClick = { viewModel.previousStep() }) {
                         Text("السابق")
+                    }
+                } else if (onBackToMain != null) {
+                    OutlinedButton(onClick = { onBackToMain() }) {
+                        Text("إلغاء")
                     }
                 } else {
                     Spacer(modifier = Modifier.width(8.dp))
@@ -123,35 +138,99 @@ fun OnboardingWizardScreen(
 
 fun canProceedToNextStep(state: OnboardingUiState): Boolean {
     return when (state.currentStep) {
-        1 -> !state.isDiscovering
-        2 -> state.validationSuccess == true
-        3 -> true // اختياري او يمكن اضافة تحقق
+        1 -> !state.isDiscovering && (state.line1Phone.isNotBlank() || state.line2Phone.isNotBlank())
+        2 -> state.walletName.isNotBlank() && state.selectedSimPhone.isNotBlank() && state.selectedSender.isNotBlank()
+        3 -> true
         else -> true
     }
 }
 
 @Composable
-fun StepDiscovery(state: OnboardingUiState) {
+fun StepLinesSetup(state: OnboardingUiState, viewModel: OnboardingViewModel) {
     if (state.isDiscovering) {
         Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("جاري استكشاف الشرائح والمرسلين...")
+                Text("جاري استكشاف وجلب بيانات الشرائح...")
             }
         }
     } else {
-        Text("الشرائح المكتشفة:", fontWeight = FontWeight.Bold)
-        state.availableSims.forEach { sim ->
-            Text("شريحة ${sim.slotIndex + 1}: ${sim.phoneNumber} - ${sim.carrier}")
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("أسماء المرسلين لآخر 30 يوم:", fontWeight = FontWeight.Bold)
-        if (state.recentSenders.isEmpty()) {
-            Text("لم يتم العثور على مرسلين.")
+        if (!state.isDualSim) {
+            // شريحة واحدة
+            Text("إعداد بيانات شريحة الاتصال:", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = state.line1Name,
+                onValueChange = { viewModel.onLine1NameChange(it) },
+                label = { Text("اسم الخط") },
+                placeholder = { Text("مثال: فودافون الرئيسية") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = state.line1Phone,
+                onValueChange = { viewModel.onLine1PhoneChange(it) },
+                label = { Text("رقم الهاتف") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+            )
         } else {
-            state.recentSenders.take(5).forEach { sender ->
-                Text("- $sender")
+            // شريحتي اتصال
+            Text("إعداد بيانات شرائح الاتصال (Dual SIM):", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text("الخط الأول (SIM 1):", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = state.line1Name,
+                        onValueChange = { viewModel.onLine1NameChange(it) },
+                        label = { Text("اسم الخط الأول") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = state.line1Phone,
+                        onValueChange = { viewModel.onLine1PhoneChange(it) },
+                        label = { Text("رقم الخط الأول") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text("الخط الثاني (SIM 2):", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = state.line2Name,
+                        onValueChange = { viewModel.onLine2NameChange(it) },
+                        label = { Text("اسم الخط الثاني") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = state.line2Phone,
+                        onValueChange = { viewModel.onLine2PhoneChange(it) },
+                        label = { Text("رقم الخط الثاني") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                    )
+                }
             }
         }
     }
@@ -163,16 +242,26 @@ fun StepWalletDetails(state: OnboardingUiState, viewModel: OnboardingViewModel) 
     var expandedSim by remember { mutableStateOf(false) }
     var expandedSender by remember { mutableStateOf(false) }
 
+    val phoneOptions = remember(state.line1Phone, state.line2Phone, state.availableSims) {
+        listOfNotNull(
+            state.line1Phone.takeIf { it.isNotBlank() },
+            state.line2Phone.takeIf { state.isDualSim && it.isNotBlank() }
+        ).ifEmpty {
+            state.availableSims.map { it.phoneNumber }.filter { it.isNotBlank() }
+        }
+    }
+
     OutlinedTextField(
         value = state.walletName,
         onValueChange = { viewModel.onWalletNameChange(it) },
         label = { Text("اسم المحفظة") },
+        placeholder = { Text("مثال: محفظة فودافون كاش - الخط الرئيسي") },
         modifier = Modifier.fillMaxWidth()
     )
     
     Spacer(modifier = Modifier.height(16.dp))
 
-    // Dropdown for SIM
+    // Dropdown for SIM Phone Selection
     ExposedDropdownMenuBox(
         expanded = expandedSim,
         onExpandedChange = { expandedSim = it }
@@ -189,11 +278,11 @@ fun StepWalletDetails(state: OnboardingUiState, viewModel: OnboardingViewModel) 
             expanded = expandedSim,
             onDismissRequest = { expandedSim = false }
         ) {
-            state.availableSims.forEach { sim ->
+            phoneOptions.forEach { phone ->
                 DropdownMenuItem(
-                    text = { Text(sim.phoneNumber.ifBlank { "غير معروف" }) },
+                    text = { Text(phone) },
                     onClick = {
-                        viewModel.onSimPhoneChange(sim.phoneNumber)
+                        viewModel.onSimPhoneChange(phone)
                         expandedSim = false
                     }
                 )
@@ -203,7 +292,7 @@ fun StepWalletDetails(state: OnboardingUiState, viewModel: OnboardingViewModel) 
 
     Spacer(modifier = Modifier.height(16.dp))
 
-    // Dropdown for Sender
+    // Dropdown for Sender (مصدر رسائل المحفظة)
     ExposedDropdownMenuBox(
         expanded = expandedSender,
         onExpandedChange = { expandedSender = it }
@@ -211,7 +300,7 @@ fun StepWalletDetails(state: OnboardingUiState, viewModel: OnboardingViewModel) 
         OutlinedTextField(
             value = state.selectedSender,
             onValueChange = { viewModel.onSenderChange(it) },
-            label = { Text("اسم المرسل (Sender)") },
+            label = { Text("مصدر رسائل المحفظة (Sender)") },
             modifier = Modifier.fillMaxWidth().menuAnchor(),
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSender) },
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
@@ -236,8 +325,11 @@ fun StepWalletDetails(state: OnboardingUiState, viewModel: OnboardingViewModel) 
 
     // حالة التحقق
     if (state.isValidationLoading) {
-        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-        Text("جاري التحقق...", style = MaterialTheme.typography.bodySmall)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("جاري التحقق...", style = MaterialTheme.typography.bodySmall)
+        }
     } else if (state.validationSuccess != null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -300,7 +392,7 @@ fun StepReview(state: OnboardingUiState) {
             Spacer(modifier = Modifier.height(8.dp))
             Text("اسم المحفظة: ${state.walletName}")
             Text("الخط المرتبط: ${state.selectedSimPhone}")
-            Text("اسم المرسل: ${state.selectedSender}")
+            Text("مصدر الرسائل: ${state.selectedSender}")
             Spacer(modifier = Modifier.height(8.dp))
             Text("إيداع يومي: ${state.dailyDepositLimit.ifBlank { "غير محدد" }}")
             Text("سحب يومي: ${state.dailyWithdrawLimit.ifBlank { "غير محدد" }}")

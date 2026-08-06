@@ -33,12 +33,47 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
             _uiState.update { it.copy(isDiscovering = true) }
             val sims = simManager.getActiveSimCards()
             val senders = getRecentSenders()
+            val isDual = sims.size >= 2
+
+            var line1Name = if (sims.isNotEmpty()) sims[0].carrier.ifBlank { "الخط الأول" } else "الخط الأول"
+            var line1Phone = sims.firstOrNull()?.phoneNumber ?: ""
+            var line2Name = if (isDual) sims[1].carrier.ifBlank { "الخط الثاني" } else ""
+            var line2Phone = if (isDual) sims[1].phoneNumber else ""
+
+            // محاولة جلب بيانات الخطوط المحفوظة من السيرفر إن وجدت
+            try {
+                val response = ApiClient.getService().getDeviceConfig()
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.has("lines")) {
+                        val linesArray = body.getAsJsonArray("lines")
+                        if (linesArray != null && linesArray.size() > 0) {
+                            val line1Obj = linesArray.get(0).asJsonObject
+                            line1Name = line1Obj.get("line_name")?.asString ?: line1Name
+                            line1Phone = line1Obj.get("phone_number")?.asString ?: line1Phone
+                            if (linesArray.size() > 1) {
+                                val line2Obj = linesArray.get(1).asJsonObject
+                                line2Name = line2Obj.get("line_name")?.asString ?: line2Name
+                                line2Phone = line2Obj.get("phone_number")?.asString ?: line2Phone
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
             _uiState.update { 
                 it.copy(
                     isDiscovering = false,
                     availableSims = sims,
                     recentSenders = senders,
-                    selectedSimPhone = sims.firstOrNull()?.phoneNumber ?: "",
+                    isDualSim = isDual,
+                    line1Name = line1Name,
+                    line1Phone = line1Phone,
+                    line2Name = line2Name,
+                    line2Phone = line2Phone,
+                    selectedSimPhone = line1Phone.ifBlank { line2Phone },
                     selectedSender = senders.firstOrNull() ?: ""
                 )
             }
@@ -72,10 +107,38 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
         return senders.toList().sorted()
     }
 
+    fun onLine1NameChange(name: String) {
+        _uiState.update { it.copy(line1Name = name) }
+    }
+
+    fun onLine1PhoneChange(phone: String) {
+        _uiState.update { 
+            val updated = it.copy(line1Phone = phone)
+            if (it.selectedSimPhone.isBlank() || it.selectedSimPhone == it.line1Phone) {
+                updated.copy(selectedSimPhone = phone)
+            } else updated
+        }
+    }
+
+    fun onLine2NameChange(name: String) {
+        _uiState.update { it.copy(line2Name = name) }
+    }
+
+    fun onLine2PhoneChange(phone: String) {
+        _uiState.update { it.copy(line2Phone = phone) }
+    }
+
     fun nextStep() {
         val current = _uiState.value.currentStep
         if (current < 4) {
-            _uiState.update { it.copy(currentStep = current + 1) }
+            // تزامن القيمة الافتراضية للخط المحدد في الخطوة الثانية إذا كان فارغاً
+            if (current == 1 && _uiState.value.selectedSimPhone.isBlank()) {
+                val state = _uiState.value
+                val firstPhone = state.line1Phone.ifBlank { state.line2Phone }
+                _uiState.update { it.copy(selectedSimPhone = firstPhone, currentStep = current + 1) }
+            } else {
+                _uiState.update { it.copy(currentStep = current + 1) }
+            }
         }
     }
 
