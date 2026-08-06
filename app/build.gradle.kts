@@ -19,8 +19,8 @@ android {
         applicationId = "com.hwnix.cash"
         minSdk = 26
         targetSdk = 34
-        versionCode = 80
-        versionName = "1.0.80"
+        versionCode = 81
+        versionName = "1.0.81"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -91,82 +91,85 @@ android {
         }
     }
 
-    applicationVariants.all {
-        val variant = this
-        variant.outputs.all {
-            val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
-            output.outputFileName = "hwnix-cash-v${variant.versionName}.apk"
-        }
-        variant.packageApplicationProvider.configure {
-            outputs.upToDateWhen { false } // إجبار توليد ملف الـ APK دائماً وتجنب تخطيه
-        }
-        variant.assembleProvider.configure {
-            outputs.upToDateWhen { false } // إجبار التجميع على العمل دائماً لضمان نسخ الـ APK للموقع
-            doLast {
-                val vCode = variant.versionCode
-                val vName = variant.versionName
-                val apkFileName = "hwnix-cash-v${vName}.apk"
+    tasks.register("copyReleaseApk") {
+        doLast {
+            val vCode = defaultConfig.versionCode ?: 81
+            val vName = defaultConfig.versionName ?: "1.0.81"
+            val apkFileName = "hwnix-cash-v${vName}.apk"
+            println("🚀 [BUILD_TASK] Running copyReleaseApk task for versionName: ${vName}")
 
-                // 1. نسخ الـ APK إلى مجلد الباك إند (الاحتفاظ بأحدث 5 نسخ)
-                val backendDir = file("../../hwnix-bill-api/public/downloads")
-                val androidApksDir = file("../apks")
-                
-                if (!androidApksDir.exists()) {
-                    androidApksDir.mkdirs()
-                }
+            val backendDir = file("../../hwnix-bill-api/public/downloads")
+            val androidApksDir = file("../apks")
+            
+            if (!androidApksDir.exists()) {
+                androidApksDir.mkdirs()
+            }
 
-                variant.outputs.map { it.outputFile }.forEach { apkFile ->
-                    if (apkFile.exists()) {
-                        // نسخ للباك إند
-                        if (backendDir.exists()) {
-                            val destFile = file("${backendDir.absolutePath}/$apkFileName")
-                            apkFile.copyTo(destFile, overwrite = true)
-                            println("🚀 APK auto-copied successfully to backend: ${destFile.absolutePath}")
-                        }
-                        // نسخ لمجلد apks في الأندرويد
-                        val localDestFile = file("${androidApksDir.absolutePath}/$apkFileName")
-                        apkFile.copyTo(localDestFile, overwrite = true)
-                        println("🚀 APK auto-copied locally to: ${localDestFile.absolutePath}")
-                    } else {
-                        println("⚠️ Source APK file does not exist: ${apkFile.absolutePath}")
+            val foundApks = mutableListOf<java.io.File>()
+            
+            // البحث الشامل في مجلد build بأسره عن أي ملف apk تم إنشاؤه
+            val appBuildDir = file("build")
+            if (appBuildDir.exists()) {
+                appBuildDir.walk().filter { it.isFile && it.extension == "apk" }.forEach { foundApks.add(it) }
+            }
+
+            val uniqueApks = foundApks.distinctBy { it.absolutePath }
+            if (uniqueApks.isEmpty()) {
+                println("⚠️ Source APK file was not found in build directory.")
+            } else {
+                uniqueApks.forEach { apkFile ->
+                    println("🔍 Found generated APK file: ${apkFile.absolutePath}")
+                    // نسخ للباك إند
+                    if (backendDir.exists()) {
+                        val destFile = file("${backendDir.absolutePath}/$apkFileName")
+                        apkFile.copyTo(destFile, overwrite = true)
+                        println("🚀 APK auto-copied successfully to backend: ${destFile.absolutePath}")
                     }
-                }
-
-                // دالة مساعدة لتنظيف المجلد والاحتفاظ بأحدث 5 ملفات فقط
-                val keepLatestFive = { dir: java.io.File ->
-                    if (dir.exists()) {
-                        val apks = dir.listFiles()?.filter { (it.name.startsWith("hwnix-cash-") || it.name.startsWith("sms-agent-")) && it.name.endsWith(".apk") }
-                        if (apks != null && apks.size > 5) {
-                            // ترتيب تنازلي حسب تاريخ التعديل (الأحدث أولاً)
-                            val sortedApks = apks.sortedByDescending { it.lastModified() }
-                            // حذف ما بعد الخامس
-                            sortedApks.drop(5).forEach { oldApk ->
-                                oldApk.delete()
-                                println("🗑️ Deleted old APK to keep top 5: ${oldApk.name} from ${dir.name}")
-                            }
-                        }
-                    }
-                }
-
-                // تنظيف مجلد الباك إند
-                keepLatestFive(backendDir)
-                
-                // تنظيف مجلد apks الأندرويد
-                keepLatestFive(androidApksDir)
-
-                // 2. تحديث ملف app-version.json في الباك إند تلقائياً بالمعلومات الصحيحة
-                if (backendDir.exists()) {
-                    val versionJsonFile = file("${backendDir.absolutePath}/app-version.json")
-                    val jsonContent = """
-                        {
-                            "version_code": $vCode,
-                            "version_name": "$vName"
-                        }
-                    """.trimIndent()
-                    versionJsonFile.writeText(jsonContent)
-                    println("✅ app-version.json updated → v$vName (code: $vCode)")
+                    // نسخ لمجلد apks في الأندرويد
+                    val localDestFile = file("${androidApksDir.absolutePath}/$apkFileName")
+                    apkFile.copyTo(localDestFile, overwrite = true)
+                    println("🚀 APK auto-copied locally to: ${localDestFile.absolutePath}")
                 }
             }
+
+            // دالة مساعدة لتنظيف المجلد والاحتفاظ بأحدث 5 ملفات فقط
+            val keepLatestFive = { dir: java.io.File ->
+                if (dir.exists()) {
+                    val apks = dir.listFiles()?.filter { (it.name.startsWith("hwnix-cash-") || it.name.startsWith("sms-agent-")) && it.name.endsWith(".apk") }
+                    if (apks != null && apks.size > 5) {
+                        val sortedApks = apks.sortedByDescending { it.lastModified() }
+                        sortedApks.drop(5).forEach { oldApk ->
+                            oldApk.delete()
+                            println("🗑️ Deleted old APK to keep top 5: ${oldApk.name} from ${dir.name}")
+                        }
+                    }
+                }
+            }
+
+            // تنظيف مجلد الباك إند
+            keepLatestFive(backendDir)
+            
+            // تنظيف مجلد apks الأندرويد
+            keepLatestFive(androidApksDir)
+
+            // 2. تحديث ملف app-version.json في الباك إند تلقائياً بالمعلومات الصحيحة
+            if (backendDir.exists()) {
+                val versionJsonFile = file("${backendDir.absolutePath}/app-version.json")
+                val jsonContent = """
+                    {
+                        "version_code": $vCode,
+                        "version_name": "$vName"
+                    }
+                """.trimIndent()
+                versionJsonFile.writeText(jsonContent)
+                println("✅ app-version.json updated → v$vName (code: $vCode)")
+            }
+        }
+    }
+
+    project.afterEvaluate {
+        tasks.matching { it.name == "assembleRelease" || it.name == "packageRelease" }.configureEach {
+            finalizedBy("copyReleaseApk")
         }
     }
 }
