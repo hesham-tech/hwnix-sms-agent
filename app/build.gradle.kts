@@ -19,8 +19,8 @@ android {
         applicationId = "com.hwnix.cash"
         minSdk = 26
         targetSdk = 34
-        versionCode = 83
-        versionName = "1.0.83"
+        versionCode = 84
+        versionName = "1.0.84"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -92,6 +92,7 @@ android {
     }
 
     tasks.register("copyReleaseApk") {
+        mustRunAfter("assembleRelease")
         doLast {
             val vCode = defaultConfig.versionCode ?: 81
             val vName = defaultConfig.versionName ?: "1.0.81"
