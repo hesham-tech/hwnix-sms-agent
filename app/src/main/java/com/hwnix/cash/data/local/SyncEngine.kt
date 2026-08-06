@@ -526,7 +526,7 @@ class SyncEngine(private val context: Context) {
                                     val monthlyCompact = "${formatCompactAmount(monthlyUsed)} / ${formatCompactAmount(monthlyLimit)}" +
                                             if (monthlyLimit > 0) " " + generateSlimProgressBar(monthlyUsed, monthlyLimit) else ""
 
-                                    summaryBuilder.append("$prefix$phone\n📅 $dailyCompact    🗓️ $monthlyCompact")
+                                    summaryBuilder.append("$prefix$phone\n⏱️ $dailyCompact    🗓️ $monthlyCompact")
                                 }
                                 val linesSummaryText = summaryBuilder.toString()
                                 sessionManager.saveLinesSummary(linesSummaryText)
@@ -841,7 +841,7 @@ class SyncEngine(private val context: Context) {
 
     private fun formatCompactAmount(amount: Double): String {
         if (amount <= 0) return "0"
-        return if (amount >= 1000) {
+        return if (amount > 1000) {
             val kVal = amount / 1000.0
             if (kVal == kVal.toInt().toDouble()) {
                 "${kVal.toInt()}k"
@@ -854,10 +854,10 @@ class SyncEngine(private val context: Context) {
     }
 
     private fun generateSlimProgressBar(used: Double, limit: Double, totalBlocks: Int = 5): String {
-        if (limit <= 0) return "▰▰▰▰▰"
+        if (limit <= 0) return "▮▮▮▮▮"
         val ratio = (used / limit).coerceIn(0.0, 1.0)
         val filled = (ratio * totalBlocks).toInt().coerceIn(0, totalBlocks)
         val empty = totalBlocks - filled
-        return "▰".repeat(filled) + "▱".repeat(empty)
+        return "▮".repeat(filled) + "▯".repeat(empty)
     }
 }

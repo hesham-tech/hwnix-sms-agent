@@ -35,26 +35,48 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
             val senders = getRecentSenders()
             val isDual = sims.size >= 2
 
-            var line1Name = if (sims.isNotEmpty()) sims[0].carrier.ifBlank { "الخط الأول" } else "الخط الأول"
-            var line1Phone = sims.firstOrNull()?.phoneNumber ?: ""
-            var line2Name = if (isDual) sims[1].carrier.ifBlank { "الخط الثاني" } else ""
-            var line2Phone = if (isDual) sims[1].phoneNumber else ""
+            val sessionManager = com.hwnix.cash.data.local.SessionManager(context)
+            val deviceId = sessionManager.getDeviceId()
 
-            // محاولة جلب بيانات الخطوط المحفوظة من السيرفر إن وجدت
+            // 1. القيم الافتراضية الأولية من شرائح الجهاز المحلية (Local SIM Manager)
+            var line1Carrier = sims.getOrNull(0)?.carrier?.takeIf { it.isNotBlank() && !it.equals("Unknown", ignoreCase = true) } ?: ""
+            var line1Name = line1Carrier.ifBlank { "الخط الأول" }
+            var line1Phone = sims.getOrNull(0)?.phoneNumber?.let { sessionManager.cleanPhoneNumber(it) } ?: ""
+
+            var line2Carrier = if (isDual) sims.getOrNull(1)?.carrier?.takeIf { it.isNotBlank() && !it.equals("Unknown", ignoreCase = true) } ?: "" else ""
+            var line2Name = if (isDual) line2Carrier.ifBlank { "الخط الثاني" } else ""
+            var line2Phone = if (isDual) sims.getOrNull(1)?.phoneNumber?.let { sessionManager.cleanPhoneNumber(it) } ?: "" else ""
+
+            // 2. جلب بيانات الخطوط المحفوظة من السيرفر إن وجدت (Priority 1)
             try {
-                val response = ApiClient.getService().getDeviceConfig()
-                if (response.isSuccessful) {
-                    val body = response.body()
-                    if (body != null && body.has("lines")) {
-                        val linesArray = body.getAsJsonArray("lines")
-                        if (linesArray != null && linesArray.size() > 0) {
-                            val line1Obj = linesArray.get(0).asJsonObject
-                            line1Name = line1Obj.get("line_name")?.asString ?: line1Name
-                            line1Phone = line1Obj.get("phone_number")?.asString ?: line1Phone
-                            if (linesArray.size() > 1) {
-                                val line2Obj = linesArray.get(1).asJsonObject
-                                line2Name = line2Obj.get("line_name")?.asString ?: line2Name
-                                line2Phone = line2Obj.get("phone_number")?.asString ?: line2Phone
+                if (deviceId > 0) {
+                    val response = ApiClient.getService().getDeviceLines(deviceId)
+                    if (response.isSuccessful && response.body() != null) {
+                        val body = response.body()!!
+                        if (body.get("status")?.asBoolean == true && body.has("data")) {
+                            val linesArray = body.getAsJsonArray("data")
+                            if (linesArray != null && linesArray.size() > 0) {
+                                linesArray.forEach { element ->
+                                    val obj = element.asJsonObject
+                                    val slotIndex = obj.get("slot_index")?.asInt ?: 0
+                                    val sCarrier = obj.get("carrier")?.asString?.trim() ?: ""
+                                    val sLineName = obj.get("line_name")?.asString?.trim() ?: ""
+                                    val sPhone = obj.get("phone_number")?.asString?.trim() ?: ""
+                                    
+                                    val serverName = when {
+                                        sLineName.isNotBlank() && !sLineName.equals("Unknown", ignoreCase = true) -> sLineName
+                                        sCarrier.isNotBlank() && !sCarrier.equals("Unknown", ignoreCase = true) -> sCarrier
+                                        else -> ""
+                                    }
+
+                                    if (slotIndex == 0) {
+                                        if (serverName.isNotBlank()) line1Name = serverName
+                                        if (sPhone.isNotBlank()) line1Phone = sessionManager.cleanPhoneNumber(sPhone)
+                                    } else if (slotIndex == 1) {
+                                        if (serverName.isNotBlank()) line2Name = serverName
+                                        if (sPhone.isNotBlank()) line2Phone = sessionManager.cleanPhoneNumber(sPhone)
+                                    }
+                                }
                             }
                         }
                     }
