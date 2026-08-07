@@ -35,6 +35,7 @@ class SessionManager(context: Context) {
         private const val KEY_LAST_SYNC_SUCCESS = "last_sync_success"
         private const val KEY_LIMIT_ALERTS_SUMMARY = "limit_alerts_summary"
         private const val KEY_COMPANY_ID = "company_id"
+        private const val KEY_EXPLANATION_ONBOARDING_SEEN = "explanation_onboarding_seen"
 
         
         private const val DEFAULT_BASE_URL = "https://bill-api.hwnix.com/api/" // رابط سيرفر الإنتاج الافتراضي
@@ -215,5 +216,13 @@ class SessionManager(context: Context) {
 
     fun clearCompanyId() {
         sharedPreferences.edit().remove(KEY_COMPANY_ID).apply()
+    }
+
+    fun isExplanationOnboardingSeen(): Boolean {
+        return sharedPreferences.getBoolean(KEY_EXPLANATION_ONBOARDING_SEEN, false)
+    }
+
+    fun markExplanationOnboardingSeen(seen: Boolean = true) {
+        sharedPreferences.edit().putBoolean(KEY_EXPLANATION_ONBOARDING_SEEN, seen).apply()
     }
 }

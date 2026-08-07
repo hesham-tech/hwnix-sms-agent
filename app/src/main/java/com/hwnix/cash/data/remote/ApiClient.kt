@@ -44,7 +44,14 @@ object ApiClient {
                     requestBuilder.addHeader("Accept", "application/json")
                     
                     val request = requestBuilder.build()
-                    chain.proceed(request)
+                    val response = chain.proceed(request)
+                    
+                    // التقط حالة انتهاء الجلسة 401 إذا لم يكن الطلب تسجيل دخول أو حساب جديد
+                    if (response.code == 401 && !request.url.encodedPath.endsWith("login") && !request.url.encodedPath.endsWith("register")) {
+                        com.hwnix.cash.core.auth.AuthEventManager.emitSessionExpired()
+                    }
+                    
+                    response
                 }
                 .build()
 

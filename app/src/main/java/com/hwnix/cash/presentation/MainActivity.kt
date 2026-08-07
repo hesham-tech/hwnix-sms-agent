@@ -172,13 +172,27 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // مزامنة تلقائية عند عودة التطبيق للواجهة (onResume)
+                        // مراقبة أحداث الخروج التلقائي وانتهائه عبر الشبكة
+                        LaunchedEffect(Unit) {
+                            com.hwnix.cash.core.auth.AuthEventManager.sessionExpiredEvents.collect { reason ->
+                                sessionManager.clearAuthToken()
+                                isLoggedIn = false
+                                Toast.makeText(context, "⚠️ $reason", Toast.LENGTH_LONG).show()
+                            }
+                        }
+
+                        // مزامنة تلقائية وفحص الجلسة عند عودة التطبيق للواجهة (onResume)
                         val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
                         DisposableEffect(lifecycleOwner, isLoggedIn) {
                             val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
                                 if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                                     if (isLoggedIn) {
-                                        statusViewModel.performFullSync(syncEngine)
+                                        if (sessionManager.getAuthToken() == null) {
+                                            isLoggedIn = false
+                                            Toast.makeText(context, "⚠️ انتهت صلاحية جلسة الحساب.", Toast.LENGTH_LONG).show()
+                                        } else {
+                                            statusViewModel.performFullSync(syncEngine)
+                                        }
                                     }
                                 }
                             }
@@ -274,16 +288,20 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // Check if we need to force company selection
+                        // Check if we need to force company selection or onboarding explanation
                         LaunchedEffect(isLoggedIn) {
                             if (isLoggedIn && sessionManager.getCompanyId() == -1L) {
                                 navigateTo("company_selection")
                             } else if (isLoggedIn) {
-                                statusViewModel.checkWallets { hasWallets ->
-                                    if (hasWallets) {
-                                        currentScreen = "status"
-                                    } else {
-                                        navigateTo("onboarding_wizard")
+                                if (!sessionManager.isExplanationOnboardingSeen()) {
+                                    navigateTo("onboarding_explanation")
+                                } else {
+                                    statusViewModel.checkWallets { hasWallets ->
+                                        if (hasWallets) {
+                                            currentScreen = "status"
+                                        } else {
+                                            navigateTo("onboarding_wizard")
+                                        }
                                     }
                                 }
                             }
@@ -310,6 +328,17 @@ class MainActivity : ComponentActivity() {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 if (currentScreen == "diagnostics") {
                                     com.hwnix.cash.presentation.screens.DiagnosticsScreen()
+                                } else if (currentScreen == "onboarding_explanation") {
+                                    com.hwnix.cash.presentation.onboarding.OnboardingExplanationScreen(
+                                        onStartSetupClick = {
+                                            sessionManager.markExplanationOnboardingSeen(true)
+                                            navigateTo("onboarding_wizard")
+                                        },
+                                        onReadLaterClick = {
+                                            sessionManager.markExplanationOnboardingSeen(true)
+                                            if (!popBackStack()) currentScreen = "status"
+                                        }
+                                    )
                                 } else if (currentScreen == "company_selection") {
                                     com.hwnix.cash.presentation.screens.CompanySelectionScreen(
                                         onNavigateNext = {

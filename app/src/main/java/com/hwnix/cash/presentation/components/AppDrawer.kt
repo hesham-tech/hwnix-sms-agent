@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -193,6 +194,28 @@ fun AppDrawer(
                     icon = { Icon(Icons.Filled.BugReport, contentDescription = null) },
                     selected = currentScreen == "diagnostics",
                     onClick = { onNavigateToScreen("diagnostics") },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                )
+
+                NavigationDrawerItem(
+                    label = { Text("دليل الشرح والتعريف", fontWeight = FontWeight.SemiBold) },
+                    icon = { Icon(Icons.Filled.Info, contentDescription = null) },
+                    selected = currentScreen == "onboarding_explanation",
+                    onClick = { onNavigateToScreen("onboarding_explanation") },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                )
+
+                val context = androidx.compose.ui.platform.LocalContext.current
+                NavigationDrawerItem(
+                    label = { Text("فتح لوحة التحكم على الويب", fontWeight = FontWeight.Bold) },
+                    icon = { Icon(Icons.Filled.OpenInNew, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    selected = false,
+                    onClick = {
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://bill.hwnix.com/app/hwnix-cash/dashboard"))
+                        context.startActivity(intent)
+                    },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
