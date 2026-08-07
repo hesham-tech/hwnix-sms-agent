@@ -58,17 +58,24 @@ fun OnboardingWizardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
         ) {
-            // مؤشر الخطوات
-            LinearProgressIndicator(
-                progress = { state.currentStep / 4f },
+            // مؤشر التقدم العلوي الموحد (الخطوة 2 - إعداد المحفظة)
+            OnboardingFlowProgressIndicator(currentStep = 2)
+
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            )
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                // مؤشر الخطوات الفرعية
+                LinearProgressIndicator(
+                    progress = { state.currentStep / 4f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                )
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -135,6 +142,7 @@ fun OnboardingWizardScreen(
         }
     }
 }
+}
 
 fun canProceedToNextStep(state: OnboardingUiState): Boolean {
     return when (state.currentStep) {
@@ -153,6 +161,47 @@ fun StepLinesSetup(state: OnboardingUiState, viewModel: OnboardingViewModel) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("جاري استكشاف وجلب بيانات الشرائح...")
+            }
+        }
+    } else if (state.availableSims.isEmpty() && state.line1Phone.isBlank()) {
+        // حالة عدم وجود شرائح اتصال (0 SIM)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Error,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "لم يتم العثور على أي شريحة اتصال.",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "أدرج شريحة واحدة على الأقل ثم أعد المحاولة.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { viewModel.retryDiscoverSims() },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("إعادة المحاولة 🔄", color = Color.White, fontWeight = FontWeight.Bold)
+                }
             }
         }
     } else {

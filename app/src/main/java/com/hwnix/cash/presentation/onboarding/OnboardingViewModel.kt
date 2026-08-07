@@ -102,6 +102,10 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
         }
     }
 
+    fun retryDiscoverSims() {
+        discoverData()
+    }
+
     @SuppressLint("Range")
     private fun getRecentSenders(): List<String> {
         val senders = mutableSetOf<String>()

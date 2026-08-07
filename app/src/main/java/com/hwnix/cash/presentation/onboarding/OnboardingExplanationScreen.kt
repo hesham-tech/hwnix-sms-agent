@@ -1,254 +1,197 @@
 package com.hwnix.cash.presentation.onboarding
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.AppShortcut
+import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.PhonelinkRing
-import androidx.compose.material.icons.filled.PointOfSale
-import androidx.compose.material.icons.filled.QuestionAnswer
-import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RocketLaunch
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Wallet
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * شاشة الترحيب والدليل التعليمي الأولي لمستخدم تطبيق كاش هونكس الجدد توضح آلية العمل وفصل مسؤولية الويب والتطبيق
+ * شاشة التعريف والتوجيه الرئيسية للتركيز والقيادة المباشرة لرحلة إعداد النظام
  */
 @Composable
 fun OnboardingExplanationScreen(
-    onStartSetupClick: () -> Unit,
-    onReadLaterClick: () -> Unit,
-    webDashboardUrl: String = "https://bill.hwnix.com/app/hwnix-cash/dashboard"
+    isFromMenu: Boolean = false,
+    onStartSetup: () -> Unit,
+    onPermissionNeeded: () -> Unit,
+    onClose: () -> Unit
 ) {
-    val context = LocalContext.current
-    val scrollState = rememberScrollState()
+    var showPreCheck by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // Top Header Banner
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0D47A1),
-                            Color(0xFF1976D2)
-                        )
-                    )
-                )
-                .padding(24.dp)
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Surface(
-                    color = Color.White.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.padding(bottom = 12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.PointOfSale,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .size(40.dp)
-                    )
+    if (showPreCheck) {
+        DevicePreCheckOverlay(
+            onCheckComplete = { isSmsGranted ->
+                showPreCheck = false
+                if (isSmsGranted) {
+                    onStartSetup()
+                } else {
+                    onPermissionNeeded()
                 }
-                Text(
-                    text = "مرحباً بك في Cash HWNix",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = "دليلك السريع لمفهوم وإدارة نظام الكاش والمحافظ",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
             }
-        }
+        )
+    }
 
-        // Scrollable Content
+    Scaffold { padding ->
         Column(
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(scrollState)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .fillMaxSize()
+                .padding(padding)
         ) {
-            // 1. Role separation callout (Crucial Rule Requirement)
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                ),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Computer,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .padding(top = 2.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "مسؤولية التطبيق ولوحة الويب:",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "التطبيق مسؤول عن استقبال الرسائل وإرسالها إلى السيرفر، بينما تتم إدارة النظام بالكامل من خلال لوحة التحكم على الويب باستخدام نفس بيانات تسجيل الدخول الخاصة بالتطبيق.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            lineHeight = 22.sp
-                        )
-                    }
-                }
+            // مؤشر التقدم العلوي الموحد (يظهر فقط في أول تشغيل)
+            if (!isFromMenu) {
+                OnboardingFlowProgressIndicator(currentStep = 1)
             }
 
-            // 2. How it works
-            ExplanationCard(
-                icon = Icons.Filled.PhonelinkRing,
-                title = "كيف يعمل النظام؟",
-                description = "يقوم التطبيق بالعمل في الخلفية لقراءة رسائل SMS المالية الواردة من شرائح المحافظ البنكية (مثل Vodafone Cash، Orange Cash، Etisalat Cash). يتم إرسال بيانات التحويل للسيرفر وتصفية الرسائل غير المالية بأمان تام."
-            )
-
-            // 3. Why create wallets
-            ExplanationCard(
-                icon = Icons.Filled.Wallet,
-                title = "لماذا نربط الخطوط بالمحافظ؟",
-                description = "لكل خط SIM في الجهاز محفظة مالية محددة. يتيح ربط الخط بالمحفظة متابعة الاستهلاك والحد اليومي والشهري وتنبيهك تلقائياً عند الاقتراب من سقف السحب أو الإيداع."
-            )
-
-            // 4. Web Dashboard Link Button
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                ),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Filled.OpenInNew,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.tertiary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "لوحة التحكم على الويب (Web Dashboard)",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "يمكنك فتح لوحة التحكم على متصفح الويب لمتابعة التقارير التفصيلية، ضبط الحدود، وإدارة الحسابات بكل سهولة.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(webDashboardUrl))
-                            context.startActivity(intent)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(Icons.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("فتح لوحة التحكم على الويب الآن", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-
-            // 5. What happens next?
-            ExplanationCard(
-                icon = Icons.Filled.RocketLaunch,
-                title = "ماذا سيحدث بعد النقر على الزر؟",
-                description = "عند النقر على \"بدء الإعداد\"، سيساعدك التطبيق في التحقق من خطوط الـ SIM الموجودة بجهازك، وإنشاء المحفظة الأولى أو ربطها بالخطوط المتصلة لمباشرة العمل فوراً."
-            )
-        }
-
-        // Bottom Action Buttons Area
-        Surface(
-            tonalElevation = 8.dp,
-            shadowElevation = 8.dp,
-            modifier = Modifier.fillMaxWidth()
-        ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 16.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                Button(
-                    onClick = onStartSetupClick,
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // الهيدر الرئيسي المكثف
+                Text(
+                    text = "مرحباً بك في Cash HWNix",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text(
+                    text = "سنرشدك لإعداد النظام خطوة بخطوة.",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF0D47A1)
-                    )
-                ) {
-                    Text(
-                        text = "بدء الإعداد الآن 🚀",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                        .padding(top = 4.dp, bottom = 16.dp)
+                )
 
-                TextButton(
-                    onClick = onReadLaterClick,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "قراءة لاحقاً والانتقال للشاشة الرئيسية",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                // 1. كارت عزل المسؤوليات المباشر
+                ExplanationCard(
+                    icon = Icons.Filled.AppShortcut,
+                    title = "مسؤولية التطبيق ولوحة الويب",
+                    description = "التطبيق يستقبل الرسائل ويرسلها للسيرفر، بينما تتم إدارة النظام بالكامل من خلال لوحة الويب.",
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 2. كارت كيف يعمل النظام؟
+                ExplanationCard(
+                    icon = Icons.Filled.Sync,
+                    title = "كيف يعمل النظام؟",
+                    description = "يعمل التطبيق في الخلفية، ويرسل الرسائل الواردة إلى السيرفر، الذي يحدد تلقائيًا الرسائل المالية ويحولها إلى معاملات، بينما يحتفظ بالرسائل الأخرى في السجل.",
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 3. كارت لماذا ننشئ محفظة؟
+                ExplanationCard(
+                    icon = Icons.Filled.AccountBalanceWallet,
+                    title = "لماذا ننشئ محفظة؟",
+                    description = "لكل خط محفظة خاصة به. بدون إنشاء محفظة لن يستطيع النظام متابعة هذا الخط أو احتساب حدوده اليومية والشهرية.",
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 4. كارت العمل في الخلفية (هل يجب أن يبقى التطبيق مفتوحاً؟)
+                ExplanationCard(
+                    icon = Icons.Filled.Schedule,
+                    title = "هل يجب أن يبقى التطبيق مفتوحًا؟",
+                    description = "لا. بعد اكتمال الإعداد يعمل التطبيق تلقائيًا في الخلفية.",
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 5. كارت ماذا سيحدث الآن؟
+                ExplanationCard(
+                    icon = Icons.Filled.PlayArrow,
+                    title = "ماذا سيحدث الآن؟",
+                    description = "سنساعدك الآن في إنشاء أول محفظة وربطها بخط الهاتف، وبعدها سيبدأ النظام بالعمل تلقائيًا.",
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 6. كارت التهيئة النفسية (قبل أن نبدأ)
+                ExplanationCard(
+                    icon = Icons.Filled.RocketLaunch,
+                    title = "قبل أن نبدأ",
+                    description = "ستستغرق عملية الإعداد أقل من دقيقة، وسنساعدك خطوة بخطوة حتى يصبح النظام جاهزًا للعمل.",
+                    containerColor = Color(0xFFE8F5E9),
+                    contentColor = Color(0xFF1B5E20)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // الزر السفلي الوحيد حسب حالة المصدر
+            Surface(
+                tonalElevation = 6.dp,
+                shadowElevation = 8.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(modifier = Modifier.padding(16.dp)) {
+                    if (!isFromMenu) {
+                        Button(
+                            onClick = { showPreCheck = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Text(
+                                text = "بدء الإعداد 🚀",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = onClose,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "إغلاق",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -259,39 +202,45 @@ fun OnboardingExplanationScreen(
 private fun ExplanationCard(
     icon: ImageVector,
     title: String,
-    description: String
+    description: String,
+    containerColor: Color,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        ),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.Top
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+            Box(
                 modifier = Modifier
-                    .size(28.dp)
-                    .padding(top = 2.dp)
-            )
+                    .size(36.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             Spacer(modifier = Modifier.width(12.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = contentColor
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = contentColor.copy(alpha = 0.85f),
                     lineHeight = 20.sp
                 )
             }

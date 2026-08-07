@@ -330,13 +330,24 @@ class MainActivity : ComponentActivity() {
                                     com.hwnix.cash.presentation.screens.DiagnosticsScreen()
                                 } else if (currentScreen == "onboarding_explanation") {
                                     com.hwnix.cash.presentation.onboarding.OnboardingExplanationScreen(
-                                        onStartSetupClick = {
+                                        isFromMenu = screenStack.isNotEmpty(),
+                                        onStartSetup = {
                                             sessionManager.markExplanationOnboardingSeen(true)
                                             navigateTo("onboarding_wizard")
                                         },
-                                        onReadLaterClick = {
+                                        onPermissionNeeded = {
                                             sessionManager.markExplanationOnboardingSeen(true)
+                                            navigateTo("permission_gate")
+                                        },
+                                        onClose = {
                                             if (!popBackStack()) currentScreen = "status"
+                                        }
+                                    )
+                                } else if (currentScreen == "permission_gate") {
+                                    com.hwnix.cash.presentation.onboarding.PermissionGateScreen(
+                                        onPermissionGranted = {
+                                            screenStack.clear()
+                                            currentScreen = "onboarding_wizard"
                                         }
                                     )
                                 } else if (currentScreen == "company_selection") {
@@ -357,12 +368,12 @@ class MainActivity : ComponentActivity() {
                                     val onboardingViewModel: com.hwnix.cash.presentation.onboarding.OnboardingViewModel = ViewModelProvider(this@MainActivity, factoryOnboarding)[com.hwnix.cash.presentation.onboarding.OnboardingViewModel::class.java]
                                     com.hwnix.cash.presentation.onboarding.OnboardingWizardScreen(
                                         viewModel = onboardingViewModel,
-                                        onSuccess = { screenStack.clear(); currentScreen = "onboarding_success" },
+                                        onSuccess = { screenStack.clear(); currentScreen = "setup_completed" },
                                         onBackToMain = { if (!popBackStack()) currentScreen = "status" }
                                     )
-                                } else if (currentScreen == "onboarding_success") {
-                                    com.hwnix.cash.presentation.onboarding.SuccessScreen(
-                                        onFinish = { screenStack.clear(); currentScreen = "status" }
+                                } else if (currentScreen == "setup_completed" || currentScreen == "onboarding_success") {
+                                    com.hwnix.cash.presentation.onboarding.SetupCompletedScreen(
+                                        onStartUsingApp = { screenStack.clear(); currentScreen = "status" }
                                     )
                                 } else {
                                     StatusScreen(
