@@ -312,9 +312,7 @@ class StatusViewModel(
                     )
                 }
                 // إغلاق التلقائي بعد ثانيتين
-                withContext(Dispatchers.IO) {
-                    Thread.sleep(1500)
-                }
+                kotlinx.coroutines.delay(1500)
                 _uiState.update { it.copy(showSimDialog = false) }
                 refreshDeviceInfo()
             } else {

@@ -293,12 +293,13 @@ class MainActivity : ComponentActivity() {
                             if (isLoggedIn && sessionManager.getCompanyId() == -1L) {
                                 navigateTo("company_selection")
                             } else if (isLoggedIn) {
-                                if (!sessionManager.isExplanationOnboardingSeen()) {
-                                    navigateTo("onboarding_explanation")
-                                } else {
-                                    statusViewModel.checkWallets { hasWallets ->
-                                        if (hasWallets) {
-                                            currentScreen = "status"
+                                statusViewModel.checkWallets { hasWallets ->
+                                    if (hasWallets) {
+                                        sessionManager.markExplanationOnboardingSeen(true)
+                                        currentScreen = "status"
+                                    } else {
+                                        if (!sessionManager.isExplanationOnboardingSeen()) {
+                                            navigateTo("onboarding_explanation")
                                         } else {
                                             navigateTo("onboarding_wizard")
                                         }
@@ -340,6 +341,7 @@ class MainActivity : ComponentActivity() {
                                             navigateTo("permission_gate")
                                         },
                                         onClose = {
+                                            sessionManager.markExplanationOnboardingSeen(true)
                                             if (!popBackStack()) currentScreen = "status"
                                         }
                                     )

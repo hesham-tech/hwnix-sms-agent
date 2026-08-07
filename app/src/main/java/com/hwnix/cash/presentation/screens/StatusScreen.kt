@@ -75,6 +75,7 @@ fun StatusScreen(
         ) {
             val sessionManager = remember { com.hwnix.cash.core.di.ServiceLocator.sessionManager }
             val limitAlertsSummary = remember(state.isRefreshing) { sessionManager.getLimitAlertsSummary() }
+            val linesSummary = remember(state.isRefreshing) { sessionManager.getLinesSummary() }
 
             // ─── بطاقة تنبيه حدود الحسابات ───────────────────────────────
             AnimatedVisibility(
@@ -276,7 +277,7 @@ fun StatusScreen(
 
 
 
-            // ─── بطاقة تفاصيل الاتصال ────────────────────────────────────
+            // ─── بطاقة أرصدة وحدود خطوط الهاتف ────────────────────────────
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 2 }
@@ -297,14 +298,14 @@ fun StatusScreen(
                             modifier = Modifier.padding(bottom = 10.dp)
                         ) {
                             Icon(
-                                Icons.Filled.DeviceHub,
+                                Icons.Filled.AccountBalanceWallet,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                "تفاصيل الجهاز والربط",
+                                "أرصدة وحدود خطوط الهاتف",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -314,11 +315,20 @@ fun StatusScreen(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Spacer(Modifier.height(10.dp))
 
-                        InfoRow(label = "معرف الجهاز", value = "#${state.deviceId}")
-                        Spacer(Modifier.height(6.dp))
-                        InfoRow(label = "UUID", value = state.deviceUuid.take(20) + "…")
-                        Spacer(Modifier.height(6.dp))
-                        InfoRow(label = "إصدار الإعدادات", value = "v${state.configVersion}")
+                        if (linesSummary.isNotBlank()) {
+                            Text(
+                                text = linesSummary,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 20.sp
+                            )
+                        } else {
+                            Text(
+                                text = "لا توجد أرقام مسجلة أو جاري تحديث البيانات من السيرفر...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
                     }
                 }
             }

@@ -28,7 +28,7 @@ class AuthRepositoryImpl(
                 addProperty("brand", Build.BRAND)
                 addProperty("model", Build.MODEL)
                 addProperty("android_version", Build.VERSION.RELEASE)
-                addProperty("app_version", "1.0.11")
+                addProperty("app_version", com.hwnix.cash.BuildConfig.VERSION_NAME)
             }
 
             val response = apiService.login(payload)

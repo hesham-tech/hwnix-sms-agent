@@ -49,7 +49,11 @@ class SyncEngine(private val context: Context) {
             return
         }
         
-        syncMutex.withLock {
+        if (!syncMutex.tryLock()) {
+            logAndTrace("TRACE_SYNC: Sync already in progress, skipping concurrent run.")
+            return
+        }
+        try {
             logAndTrace("TRACE_SYNC_01: Enter Sync()")
             
             try {
@@ -105,6 +109,8 @@ class SyncEngine(private val context: Context) {
                 BootTracker.logException(context, "SyncEngine.performFullSync", e)
                 sendRemoteLog("TRACE_SYNC_ERROR", "Sync error: ${e.message}")
             }
+        } finally {
+            syncMutex.unlock()
         }
     }
 
@@ -266,7 +272,7 @@ class SyncEngine(private val context: Context) {
             addProperty("is_internet_available", networkType != "unknown")
             addProperty("free_memory_bytes", Runtime.getRuntime().freeMemory())
             addProperty("free_storage_bytes", context.filesDir.usableSpace)
-            addProperty("app_version", "1.0.11")
+            addProperty("app_version", com.hwnix.cash.BuildConfig.VERSION_NAME)
             addProperty("configuration_version", sessionManager.getConfigVersion())
         }
 
@@ -285,6 +291,9 @@ class SyncEngine(private val context: Context) {
                         sessionManager.saveLoggingLevel(config.get("logging_level").asString)
                         sessionManager.saveMaxRetry(config.get("max_retry_count").asInt)
                         Log.i(TAG, "Device settings updated to version: ${sessionManager.getConfigVersion()}")
+                    }
+                    if (data.has("lines_summary")) {
+                        updateLinesSummaryFromJson(data.getAsJsonArray("lines_summary"))
                     }
                     return@withContext true
                 }
@@ -504,35 +513,10 @@ class SyncEngine(private val context: Context) {
                         }
                         totalUploaded += pending.size
 
-                        // استخراج ملخص الحدود المستهلكة للخطوط إذا تضمنتها الاستجابة وتنسيقها بشكل رفيع ومدمج
+                        // استخراج ملخص الحدود والأرصدة للخطوط إذا تضمنتها الاستجابة
                         if (body.has("data") && body.getAsJsonObject("data").has("lines_summary")) {
                             val dataObj = body.getAsJsonObject("data")
-                            val linesArray = dataObj.getAsJsonArray("lines_summary")
-                            if (linesArray != null && linesArray.size() > 0) {
-                                val summaryBuilder = StringBuilder()
-                                val isMultiSim = linesArray.size() > 1
-                                for (i in 0 until linesArray.size()) {
-                                    val line = linesArray.get(i).asJsonObject
-                                    val phone = line.get("phone_number")?.asString ?: "خط ${i+1}"
-                                    val dailyUsed = line.get("daily_deposit_used")?.asDouble ?: 0.0
-                                    val dailyLimit = line.get("daily_deposit_limit")?.asDouble ?: 0.0
-                                    val monthlyUsed = line.get("monthly_deposit_used")?.asDouble ?: 0.0
-                                    val monthlyLimit = line.get("monthly_deposit_limit")?.asDouble ?: 0.0
-
-                                    if (i > 0) summaryBuilder.append("\n")
-                                    val prefix = if (isMultiSim) "📱 خط ${i + 1} ($phone)" else "📱 $phone"
-                                    val dailyPct = if (dailyLimit > 0) " (" + (dailyUsed / dailyLimit * 100).coerceIn(0.0, 100.0).toInt() + "%)" else ""
-                                    val monthlyPct = if (monthlyLimit > 0) " (" + (monthlyUsed / monthlyLimit * 100).coerceIn(0.0, 100.0).toInt() + "%)" else ""
-
-                                    val dailyCompact = "${formatCompactAmount(dailyUsed)}/${formatCompactAmount(dailyLimit)}$dailyPct"
-                                    val monthlyCompact = "${formatCompactAmount(monthlyUsed)}/${formatCompactAmount(monthlyLimit)}$monthlyPct"
-
-                                    summaryBuilder.append("$prefix\n⏱️ اليوم: $dailyCompact | 🗓️ الشهر: $monthlyCompact")
-                                }
-                                val linesSummaryText = summaryBuilder.toString()
-                                sessionManager.saveLinesSummary(linesSummaryText)
-                                Log.i(TAG, "Updated lines summary from batchSync: $linesSummaryText")
-                            }
+                            updateLinesSummaryFromJson(dataObj.getAsJsonArray("lines_summary"))
                         }
 
                         Log.i(TAG, "Synced chunk of ${pending.size} messages successfully. Total so far: $totalUploaded")
@@ -860,5 +844,36 @@ class SyncEngine(private val context: Context) {
         val filled = (ratio * totalBlocks).toInt().coerceIn(0, totalBlocks)
         val empty = totalBlocks - filled
         return "▮".repeat(filled) + "▯".repeat(empty)
+    }
+
+    private fun updateLinesSummaryFromJson(linesArray: com.google.gson.JsonArray) {
+        if (linesArray.size() == 0) return
+        val summaryBuilder = StringBuilder()
+        val isMultiSim = linesArray.size() > 1
+        for (i in 0 until linesArray.size()) {
+            val line = linesArray.get(i).asJsonObject
+            val phone = line.get("phone_number")?.asString ?: "خط ${i+1}"
+            val carrier = line.get("carrier")?.asString ?: ""
+            val actualBal = line.get("total_actual_balance")?.asDouble ?: 0.0
+            val bookBal = line.get("total_balance")?.asDouble ?: 0.0
+            val dailyUsed = line.get("daily_deposit_used")?.asDouble ?: 0.0
+            val dailyLimit = line.get("daily_deposit_limit")?.asDouble ?: 0.0
+            val monthlyUsed = line.get("monthly_deposit_used")?.asDouble ?: 0.0
+            val monthlyLimit = line.get("monthly_deposit_limit")?.asDouble ?: 0.0
+
+            if (i > 0) summaryBuilder.append("\n\n")
+            val carrierText = if (carrier.isNotBlank()) " - $carrier" else ""
+            val prefix = if (isMultiSim) "📱 خط ${i + 1} ($phone$carrierText)" else "📱 $phone$carrierText"
+            val dailyPct = if (dailyLimit > 0) " (" + (dailyUsed / dailyLimit * 100).coerceIn(0.0, 100.0).toInt() + "%)" else ""
+            val monthlyPct = if (monthlyLimit > 0) " (" + (monthlyUsed / monthlyLimit * 100).coerceIn(0.0, 100.0).toInt() + "%)" else ""
+
+            val dailyCompact = "${formatCompactAmount(dailyUsed)}/${formatCompactAmount(dailyLimit)}$dailyPct"
+            val monthlyCompact = "${formatCompactAmount(monthlyUsed)}/${formatCompactAmount(monthlyLimit)}$monthlyPct"
+
+            summaryBuilder.append("$prefix\n💵 فعلي: ${formatCompactAmount(actualBal)} | 📖 دفتري: ${formatCompactAmount(bookBal)}\n⏱️ اليوم: $dailyCompact | 🗓️ الشهر: $monthlyCompact")
+        }
+        val linesSummaryText = summaryBuilder.toString()
+        sessionManager.saveLinesSummary(linesSummaryText)
+        Log.i(TAG, "Updated lines summary from server: $linesSummaryText")
     }
 }
