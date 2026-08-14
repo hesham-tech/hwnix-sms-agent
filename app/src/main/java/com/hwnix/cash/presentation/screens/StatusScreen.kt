@@ -46,6 +46,8 @@ fun StatusScreen(
     onSimSetupClick: () -> Unit,
     onBatteryOptimizeClick: () -> Unit,
     onAddWalletClick: () -> Unit,
+    onReconcileLineClick: (Int) -> Unit = {},
+    onDeleteLineClick: (Int) -> Unit = {},
     // تم نقله للـ Drawer - احتفاظ بالمعامل للتوافق
     onLogoutClick: () -> Unit = {}
 ) {
@@ -322,6 +324,44 @@ fun StatusScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 lineHeight = 20.sp
                             )
+                            
+                            if (state.deviceLines.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    state.deviceLines.forEach { (slot, info) ->
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = { onReconcileLineClick(slot) },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0D47A1)),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF0D47A1).copy(alpha = 0.5f)),
+                                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                                            ) {
+                                                Icon(Icons.Filled.AccountBalance, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                Spacer(Modifier.width(4.dp))
+                                                Text("تسوية شريحة ${slot + 1}", style = MaterialTheme.typography.labelSmall)
+                                            }
+
+                                            OutlinedButton(
+                                                onClick = { onDeleteLineClick(slot) },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB71C1C)),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFB71C1C).copy(alpha = 0.5f)),
+                                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                                            ) {
+                                                Icon(Icons.Filled.DeleteForever, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                Spacer(Modifier.width(4.dp))
+                                                Text("حذف شريحة ${slot + 1}", style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         } else {
                             Text(
                                 text = "لا توجد أرقام مسجلة أو جاري تحديث البيانات من السيرفر...",

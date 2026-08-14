@@ -21,5 +21,7 @@ interface DeviceRepository {
     suspend fun getPendingCommands(deviceId: Long): Result<JsonObject>
     suspend fun executeCommand(commandId: Long, idempotencyKey: String, body: JsonObject): Result<JsonObject>
     suspend fun decoupleDevice(deviceId: Long): Result<Unit>
+    suspend fun reconcileLine(slotIndex: Int, targetBalance: Double, note: String): Result<Unit>
+    suspend fun deleteLine(slotIndex: Int): Result<Unit>
 }
 

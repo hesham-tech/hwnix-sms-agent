@@ -21,8 +21,9 @@ data class StatusUiState(
     val localUpdateVersionName: String = "",
     val isCheckingUpdate: Boolean = false,
     val updateStatusMessage: String? = null,
-
     
+    val deviceLines: Map<Int, Pair<String, String>> = emptyMap(),
+
     // إعداد الخطوط
     val showSimDialog: Boolean = false,
     val detectedSims: List<SimCard> = emptyList(),
@@ -32,5 +33,19 @@ data class StatusUiState(
     val simSaveResult: String? = null,
     val isFirstSetup: Boolean = false,
     val gatewayName: String = "",
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    
+    // تسوية الأرصدة
+    val showReconcileDialog: Boolean = false,
+    val reconcileSlotIndex: Int = 0,
+    val reconcileTargetBalance: String = "",
+    val reconcileNote: String = "",
+    val isReconciling: Boolean = false,
+    val reconcileResult: String? = null,
+    
+    // حذف الخطوط
+    val showDeleteDialog: Boolean = false,
+    val deleteSlotIndex: Int = 0,
+    val isDeleting: Boolean = false,
+    val deleteResult: String? = null
 )

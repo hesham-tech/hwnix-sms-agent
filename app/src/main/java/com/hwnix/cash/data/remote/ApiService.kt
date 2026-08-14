@@ -93,4 +93,16 @@ interface ApiService {
 
     @POST("v1/agent/onboarding/complete")
     suspend fun completeOnboarding(@Body body: JsonObject): Response<JsonObject>
+
+    @POST("v1/agent/lines/reconcile")
+    suspend fun reconcileLine(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @retrofit2.http.HTTP(method = "DELETE", path = "v1/agent/lines/delete", hasBody = true)
+    suspend fun deleteLine(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
 }

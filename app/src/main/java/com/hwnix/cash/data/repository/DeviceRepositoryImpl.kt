@@ -273,6 +273,66 @@ class DeviceRepositoryImpl(
         }
     }
 
+    override suspend fun reconcileLine(slotIndex: Int, targetBalance: Double, note: String): Result<Unit> {
+        return try {
+            val deviceId = sessionManager.getDeviceId()
+            if (deviceId == -1L) return Result.failure(Exception("Device not registered"))
+
+            val payload = JsonObject().apply {
+                addProperty("device_id", deviceId)
+                addProperty("slot_index", slotIndex)
+                addProperty("target_balance", targetBalance)
+                addProperty("note", note)
+            }
+            
+            val key = UUID.randomUUID().toString()
+            val response = apiService.reconcileLine(key, payload)
+
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                if (body.get("status")?.asBoolean == true) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception(body.get("message")?.asString ?: "فشل إجراء التسوية"))
+                }
+            } else {
+                Result.failure(Exception(parseErrorMessage(response.errorBody()?.string())))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "reconcileLine failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteLine(slotIndex: Int): Result<Unit> {
+        return try {
+            val deviceId = sessionManager.getDeviceId()
+            if (deviceId == -1L) return Result.failure(Exception("Device not registered"))
+
+            val payload = JsonObject().apply {
+                addProperty("device_id", deviceId)
+                addProperty("slot_index", slotIndex)
+            }
+            
+            val key = UUID.randomUUID().toString()
+            val response = apiService.deleteLine(key, payload)
+
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                if (body.get("status")?.asBoolean == true) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception(body.get("message")?.asString ?: "فشل حذف الخط"))
+                }
+            } else {
+                Result.failure(Exception(parseErrorMessage(response.errorBody()?.string())))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "deleteLine failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
     private fun parseErrorMessage(errorBody: String?): String {
         if (!errorBody.isNullOrEmpty()) {
             try {

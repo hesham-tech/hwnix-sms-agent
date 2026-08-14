@@ -29,6 +29,8 @@ import com.hwnix.cash.data.local.SessionManager
 import com.hwnix.cash.data.local.SyncEngine
 import com.hwnix.cash.data.service.AgentForegroundService
 import com.hwnix.cash.presentation.components.AppDrawer
+import com.hwnix.cash.presentation.components.DeleteDialog
+import com.hwnix.cash.presentation.components.ReconcileDialog
 import com.hwnix.cash.presentation.components.SimSetupDialog
 import com.hwnix.cash.presentation.screens.LoginScreen
 import com.hwnix.cash.presentation.screens.RegisterScreen
@@ -386,7 +388,9 @@ class MainActivity : ComponentActivity() {
                                         onBatteryOptimizeClick = {
                                             statusViewModel.disableBatteryOptimization()
                                         },
-                                        onAddWalletClick = { navigateTo("onboarding_wizard") }
+                                        onAddWalletClick = { navigateTo("onboarding_wizard") },
+                                        onReconcileLineClick = { statusViewModel.openReconcileDialog(it) },
+                                        onDeleteLineClick = { statusViewModel.openDeleteDialog(it) }
                                     )
                                 }
                                 IconButton(
@@ -425,6 +429,32 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onSave = { statusViewModel.saveSimSetup() },
                                 onDismiss = { statusViewModel.dismissSimDialog() }
+                            )
+                        }
+
+                        // Dialog تسوية الأرصدة
+                        if (statusState.showReconcileDialog) {
+                            ReconcileDialog(
+                                slotIndex = statusState.reconcileSlotIndex,
+                                targetBalance = statusState.reconcileTargetBalance,
+                                note = statusState.reconcileNote,
+                                isReconciling = statusState.isReconciling,
+                                reconcileResult = statusState.reconcileResult,
+                                onTargetBalanceChange = { statusViewModel.onReconcileTargetBalanceChange(it) },
+                                onNoteChange = { statusViewModel.onReconcileNoteChange(it) },
+                                onReconcile = { statusViewModel.reconcileLine() },
+                                onDismiss = { statusViewModel.dismissReconcileDialog() }
+                            )
+                        }
+
+                        // Dialog حذف الخط نهائياً
+                        if (statusState.showDeleteDialog) {
+                            DeleteDialog(
+                                slotIndex = statusState.deleteSlotIndex,
+                                isDeleting = statusState.isDeleting,
+                                deleteResult = statusState.deleteResult,
+                                onDelete = { statusViewModel.deleteLine() },
+                                onDismiss = { statusViewModel.dismissDeleteDialog() }
                             )
                         }
 

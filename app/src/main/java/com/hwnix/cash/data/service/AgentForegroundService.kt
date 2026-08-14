@@ -409,38 +409,16 @@ class AgentForegroundService : Service() {
             setPackage(packageName)
             putExtra("launcher_source", "TASK_REMOVED_RESTART")
         }
-        
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
-        }
-
-        val pendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            PendingIntent.getForegroundService(applicationContext, 1001, restartServiceIntent, flags)
-        } else {
-            PendingIntent.getService(applicationContext, 1001, restartServiceIntent, flags)
-        }
-
-        val alarmService = applicationContext.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-        val triggerAt = System.currentTimeMillis() + 500L
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val alarmClockInfo = android.app.AlarmManager.AlarmClockInfo(triggerAt, pendingIntent)
-                alarmService.setAlarmClock(alarmClockInfo, pendingIntent)
-            } else {
-                alarmService.setExact(android.app.AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
-            }
             AgentRestartWorker.enqueue(applicationContext)
-            val alarmLog = "FORENSIC_EVENT: ALARM_CLOCK_RESTART_SCHEDULED | Delay: 500ms | WorkManager Enqueued"
-            Log.i(TAG, alarmLog)
-            BootTracker.updateStage(applicationContext, alarmLog)
+            val workerLog = "FORENSIC_EVENT: RESTART_SCHEDULED | WorkManager Enqueued"
+            Log.i(TAG, workerLog)
+            BootTracker.updateStage(applicationContext, workerLog)
         } catch (e: Exception) {
-            val alarmErr = "FORENSIC_EVENT: ALARM_SCHEDULE_FAILED | Err: ${e.message}"
-            Log.e(TAG, alarmErr)
-            BootTracker.updateStage(applicationContext, alarmErr)
-            try { AgentRestartWorker.enqueue(applicationContext) } catch (_: Exception) {}
+            val errLog = "FORENSIC_EVENT: WORKER_SCHEDULE_FAILED | Err: ${e.message}"
+            Log.e(TAG, errLog)
+            BootTracker.updateStage(applicationContext, errLog)
         }
         super.onTaskRemoved(rootIntent)
     }

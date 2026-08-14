@@ -77,7 +77,10 @@ class StatusViewModel(
             try {
                 val deviceId = sessionManager.getDeviceId()
                 if (deviceId != -1L) {
-                    deviceRepository.getDeviceLines(deviceId)
+                    val linesResult = deviceRepository.getDeviceLines(deviceId)
+                    if (linesResult.isSuccess) {
+                        _uiState.update { it.copy(deviceLines = linesResult.getOrDefault(emptyMap())) }
+                    }
                 }
             } catch (e: Exception) {
                 // ignore line fetch failures during refresh
@@ -121,6 +124,14 @@ class StatusViewModel(
                 )
             }
             
+            // جلب الخطوط
+            if (deviceIdVal != "غير مسجل") {
+                val linesResult = deviceRepository.getDeviceLines(sessionManager.getDeviceId())
+                if (linesResult.isSuccess) {
+                    _uiState.update { it.copy(deviceLines = linesResult.getOrDefault(emptyMap())) }
+                }
+            }
+
             // إذا لم يتم الإعداد بعد الدخول لأول مرة
             if (isFirstSetupVal && sessionManager.getAuthToken() != null) {
                 withContext(Dispatchers.Main) {
@@ -384,6 +395,125 @@ class StatusViewModel(
                 }
             } catch (e: Exception) {
                 onResult(true)
+            }
+        }
+    }
+
+    // --- وظائف تسوية الرصيد ---
+
+    fun openReconcileDialog(slotIndex: Int) {
+        _uiState.update { 
+            it.copy(
+                showReconcileDialog = true,
+                reconcileSlotIndex = slotIndex,
+                reconcileTargetBalance = "",
+                reconcileNote = "",
+                reconcileResult = null
+            ) 
+        }
+    }
+
+    fun dismissReconcileDialog() {
+        _uiState.update { it.copy(showReconcileDialog = false) }
+    }
+
+    fun onReconcileTargetBalanceChange(value: String) {
+        _uiState.update { it.copy(reconcileTargetBalance = value) }
+    }
+
+    fun onReconcileNoteChange(value: String) {
+        _uiState.update { it.copy(reconcileNote = value) }
+    }
+
+    fun reconcileLine() {
+        val targetBalance = _uiState.value.reconcileTargetBalance.toDoubleOrNull()
+        if (targetBalance == null || targetBalance < 0) {
+            _uiState.update { it.copy(reconcileResult = "❌ رجاءً أدخل رصيداً صحيحاً.") }
+            return
+        }
+
+        val note = _uiState.value.reconcileNote
+        val slotIndex = _uiState.value.reconcileSlotIndex
+
+        _uiState.update { it.copy(isReconciling = true, reconcileResult = null) }
+        viewModelScope.launch {
+            val result = deviceRepository.reconcileLine(slotIndex, targetBalance, note)
+            if (result.isSuccess) {
+                _uiState.update {
+                    it.copy(
+                        isReconciling = false,
+                        reconcileResult = "✅ تمت التسوية بنجاح."
+                    )
+                }
+                kotlinx.coroutines.delay(1500)
+                _uiState.update { it.copy(showReconcileDialog = false) }
+                // Refresh lines to get updated balance
+                val deviceId = sessionManager.getDeviceId()
+                if (deviceId != -1L) {
+                    val linesResult = deviceRepository.getDeviceLines(deviceId)
+                    if (linesResult.isSuccess) {
+                        _uiState.update { it.copy(deviceLines = linesResult.getOrDefault(emptyMap())) }
+                    }
+                }
+            } else {
+                val err = result.exceptionOrNull()?.message ?: "فشل التسوية"
+                _uiState.update {
+                    it.copy(
+                        isReconciling = false,
+                        reconcileResult = "❌ $err"
+                    )
+                }
+            }
+        }
+    }
+
+    // --- وظائف حذف الخط ---
+
+    fun openDeleteDialog(slotIndex: Int) {
+        _uiState.update { 
+            it.copy(
+                showDeleteDialog = true,
+                deleteSlotIndex = slotIndex,
+                deleteResult = null
+            ) 
+        }
+    }
+
+    fun dismissDeleteDialog() {
+        _uiState.update { it.copy(showDeleteDialog = false) }
+    }
+
+    fun deleteLine() {
+        val slotIndex = _uiState.value.deleteSlotIndex
+
+        _uiState.update { it.copy(isDeleting = true, deleteResult = null) }
+        viewModelScope.launch {
+            val result = deviceRepository.deleteLine(slotIndex)
+            if (result.isSuccess) {
+                _uiState.update {
+                    it.copy(
+                        isDeleting = false,
+                        deleteResult = "✅ تم حذف الخط نهائياً بنجاح."
+                    )
+                }
+                kotlinx.coroutines.delay(1500)
+                _uiState.update { it.copy(showDeleteDialog = false) }
+                // Refresh lines to update UI
+                val deviceId = sessionManager.getDeviceId()
+                if (deviceId != -1L) {
+                    val linesResult = deviceRepository.getDeviceLines(deviceId)
+                    if (linesResult.isSuccess) {
+                        _uiState.update { it.copy(deviceLines = linesResult.getOrDefault(emptyMap())) }
+                    }
+                }
+            } else {
+                val err = result.exceptionOrNull()?.message ?: "فشل الحذف"
+                _uiState.update {
+                    it.copy(
+                        isDeleting = false,
+                        deleteResult = "❌ $err"
+                    )
+                }
             }
         }
     }
