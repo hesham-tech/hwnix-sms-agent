@@ -17,7 +17,7 @@ android {
 
     defaultConfig {
         applicationId = "com.hwnix.cash"
-        minSdk = 26
+        minSdk = 23
         targetSdk = 34
         versionCode = 90
         versionName = "1.0.90"

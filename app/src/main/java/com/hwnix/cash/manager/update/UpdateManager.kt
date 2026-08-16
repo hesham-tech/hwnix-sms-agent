@@ -170,107 +170,34 @@ class UpdateManager(private val context: Context) {
                 return
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                installApkWithPackageInstaller(apkFile)
-            } else {
-                installApkLegacy(apkFile)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Install APK failed: ${e.message}", e)
-        }
-    }
-
-    private fun installApkLegacy(apkFile: File) {
-        try {
             val authority = "${context.packageName}.fileprovider"
             val apkUri = FileProvider.getUriForFile(context, authority, apkFile)
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(apkUri, "application/vnd.android.package-archive")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
             }
-            val resInfoList = context.packageManager.queryIntentActivities(
-                intent,
-                android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
-            )
-            for (resolveInfo in resInfoList) {
-                val packageName = resolveInfo.activityInfo.packageName
-                context.grantUriPermission(
-                    packageName,
-                    apkUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            }
-            context.startActivity(intent)
-        } catch (ex: Exception) {
-            Log.e(TAG, "Legacy install failed: ${ex.message}")
-        }
-    }
 
-    private fun installApkWithPackageInstaller(apkFile: File) {
-        try {
-            val packageInstaller = context.packageManager.packageInstaller
-            val params = android.content.pm.PackageInstaller.SessionParams(android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-            val sessionId = packageInstaller.createSession(params)
-            val session = packageInstaller.openSession(sessionId)
-            
-            val sizeBytes = apkFile.length()
-            val inStream = java.io.FileInputStream(apkFile)
-            val outStream = session.openWrite("package", 0, sizeBytes)
-            inStream.copyTo(outStream)
-            session.fsync(outStream)
-            outStream.close()
-            inStream.close()
-            
-            val intent = Intent("com.hwnix.cash.ACTION_INSTALL_COMPLETE")
-            intent.setPackage(context.packageName)
-            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE
-            } else {
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT
-            }
-            val pendingIntent = android.app.PendingIntent.getBroadcast(
-                context, sessionId, intent, flags
-            )
-            
-            val receiver = object : android.content.BroadcastReceiver() {
-                override fun onReceive(ctx: Context, receivedIntent: Intent) {
-                    val status = receivedIntent.getIntExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, android.content.pm.PackageInstaller.STATUS_FAILURE)
-                    val message = receivedIntent.getStringExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "No message"
-                    
-                    if (status == android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION) {
-                        val confirmationIntent = receivedIntent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-                        if (confirmationIntent != null) {
-                            confirmationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            ctx.startActivity(confirmationIntent)
-                        }
-                    } else if (status != android.content.pm.PackageInstaller.STATUS_SUCCESS) {
-                        val errorMsg = "خطأ في التثبيت!\nالرمز: $status\nالرسالة: $message"
-                        android.os.Handler(android.os.Looper.getMainLooper()).post {
-                            Toast.makeText(ctx, errorMsg, Toast.LENGTH_LONG).show()
-                        }
-                        try {
-                            val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                            java.io.File(downloads, "hwnix_install_error.txt").writeText(errorMsg)
-                        } catch (e: Exception) {}
-                        Log.e(TAG, "Install failed: $status - $message")
-                        ctx.applicationContext.unregisterReceiver(this)
-                    } else {
-                        ctx.applicationContext.unregisterReceiver(this)
-                    }
+            // منح صلاحية القراءة صراحة لجميع الحزم المتنصتة على هذا الحدث
+            try {
+                val resInfoList = context.packageManager.queryIntentActivities(
+                    intent,
+                    android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
+                )
+                for (resolveInfo in resInfoList) {
+                    val packageName = resolveInfo.activityInfo.packageName
+                    context.grantUriPermission(
+                        packageName,
+                        apkUri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
                 }
+            } catch (ex: Exception) {
+                Log.e(TAG, "Error granting URI permission: ${ex.message}")
             }
-            val intentFilter = android.content.IntentFilter("com.hwnix.cash.ACTION_INSTALL_COMPLETE")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.applicationContext.registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED)
-            } else {
-                context.applicationContext.registerReceiver(receiver, intentFilter)
-            }
-            
-            session.commit(pendingIntent.intentSender)
-            session.close()
+
+            context.startActivity(intent)
         } catch (e: Exception) {
-            Log.e(TAG, "PackageInstaller failed: ${e.message}", e)
-            installApkLegacy(apkFile)
+            Log.e(TAG, "Install APK failed: ${e.message}", e)
         }
     }
 
