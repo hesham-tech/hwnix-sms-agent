@@ -870,7 +870,7 @@ class SyncEngine(private val context: Context) {
             val dailyCompact = "${formatCompactAmount(dailyUsed)}/${formatCompactAmount(dailyLimit)}$dailyPct"
             val monthlyCompact = "${formatCompactAmount(monthlyUsed)}/${formatCompactAmount(monthlyLimit)}$monthlyPct"
 
-            summaryBuilder.append("$prefix\n💵 فعلي: ${formatCompactAmount(actualBal)} | 📖 دفتري: ${formatCompactAmount(bookBal)}\n⏱️ اليوم: $dailyCompact | 🗓️ الشهر: $monthlyCompact")
+            summaryBuilder.append("$prefix\nفعلي: ${formatCompactAmount(actualBal)} | دفتري: ${formatCompactAmount(bookBal)}\nاليوم: $dailyCompact | الشهر: $monthlyCompact")
         }
         val linesSummaryText = summaryBuilder.toString()
         sessionManager.saveLinesSummary(linesSummaryText)
