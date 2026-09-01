@@ -37,8 +37,14 @@ class AuthRepositoryImpl(
                 if (responseBody.get("status")?.asBoolean == true) {
                     val data = responseBody.getAsJsonObject("data")
                     val token = data.get("token").asString
+                    
+                    val companyId = data.getAsJsonObject("company")?.get("id")?.asLong ?: -1L
                     com.hwnix.cash.core.di.ServiceLocator.clearAllAppData()
                     sessionManager.saveAuthToken(token)
+                    if (companyId != -1L) {
+                        sessionManager.saveCompanyId(companyId)
+                    }
+                    
                     ApiClient.resetClient()
                     return Result.success(Unit)
                 }
@@ -77,8 +83,14 @@ class AuthRepositoryImpl(
                 if (responseBody.get("status")?.asBoolean == true) {
                     val data = responseBody.getAsJsonObject("data")
                     val token = data.get("token").asString
+                    
+                    val companyId = data.getAsJsonObject("company")?.get("id")?.asLong ?: -1L
                     com.hwnix.cash.core.di.ServiceLocator.clearAllAppData()
                     sessionManager.saveAuthToken(token)
+                    if (companyId != -1L) {
+                        sessionManager.saveCompanyId(companyId)
+                    }
+                    
                     ApiClient.resetClient()
                     return Result.success(Unit)
                 }
