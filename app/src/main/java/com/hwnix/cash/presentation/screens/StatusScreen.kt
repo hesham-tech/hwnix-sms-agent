@@ -362,6 +362,10 @@ fun StatusScreen(
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     state.deviceLines.forEach { (slot, info) ->
+                                        val serverCarrier = info.carrier ?: ""
+                                        val hardwareCarrier = state.detectedSims.find { it.slotIndex == slot }?.carrier ?: ""
+                                        val lineName = com.hwnix.cash.utils.LineNameHelper.resolveLineName(serverCarrier, hardwareCarrier, slot)
+
                                         Column(
                                             modifier = Modifier.weight(1f),
                                             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -376,9 +380,6 @@ fun StatusScreen(
                                             ) {
                                                 Icon(Icons.Filled.AccountBalance, contentDescription = null, modifier = Modifier.size(14.dp))
                                                 Spacer(Modifier.width(4.dp))
-                                                val serverCarrier = state.deviceLines[slot]?.carrier ?: ""
-                                                val hardwareCarrier = info.carrier
-                                                val lineName = com.hwnix.cash.utils.LineNameHelper.resolveLineName(serverCarrier, hardwareCarrier, slot)
                                                 Text("تسوية رصيد $lineName", style = MaterialTheme.typography.labelSmall)
                                             }
 
