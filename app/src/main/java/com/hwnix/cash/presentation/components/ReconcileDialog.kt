@@ -39,13 +39,14 @@ fun ReconcileDialog(
             )
         },
         text = {
+            val format = java.text.DecimalFormat("#,##0.00")
             Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text("الرصيد الدفتري:", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-                    Text("$bookBalance ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    Text("${format.format(bookBalance)} ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
@@ -53,7 +54,7 @@ fun ReconcileDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text("الرصيد الفعلي الحالي:", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-                    Text("$actualBalance ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    Text("${format.format(actualBalance)} ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
@@ -62,7 +63,7 @@ fun ReconcileDialog(
                 ) {
                     Text("الفارق:", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                     val diffColor = if (balanceDiff < 0) Color(0xFFB71C1C) else if (balanceDiff > 0) Color(0xFF2E7D32) else Color.Gray
-                    Text("${if(balanceDiff > 0) "+" else ""}$balanceDiff ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = diffColor)
+                    Text("${if(balanceDiff > 0) "+" else ""}${format.format(balanceDiff)} ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = diffColor)
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
