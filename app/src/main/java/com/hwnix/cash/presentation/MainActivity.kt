@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex.zIndex
 import androidx.lifecycle.ViewModelProvider
 import com.hwnix.cash.core.di.ViewModelFactory
 import com.hwnix.cash.data.local.SessionManager
@@ -461,6 +462,11 @@ class MainActivity : ComponentActivity() {
                         // Dialog تحديث التطبيق
                         if (statusState.showUpdateDialog) {
                             AlertDialog(
+                                modifier = Modifier.zIndex(9999f),
+                                properties = androidx.compose.ui.window.DialogProperties(
+                                    dismissOnBackPress = false,
+                                    dismissOnClickOutside = false
+                                ),
                                 onDismissRequest = { statusViewModel.dismissUpdateDialog() },
                                 title = { Text("تحديث جديد متاح") },
                                 text = {
