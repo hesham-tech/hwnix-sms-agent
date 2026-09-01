@@ -862,7 +862,11 @@ class SyncEngine(private val context: Context) {
         for (i in 0 until linesArray.size()) {
             val line = linesArray.get(i).asJsonObject
             val phone = line.get("phone_number")?.asString ?: "خط ${i+1}"
-            val carrier = line.get("carrier")?.asString ?: ""
+            val lineId = line.get("id")?.asInt ?: 0 // Just to get slot? No, lines are ordered, or we can use slot index i
+            val serverCarrier = line.get("carrier")?.asString ?: ""
+            val hardwareCarrier = com.hwnix.cash.manager.sim.SimManager(context).getActiveSimCards().find { it.slotIndex == i }?.carrier ?: ""
+            val carrier = com.hwnix.cash.utils.LineNameHelper.resolveLineName(serverCarrier, hardwareCarrier, i)
+
             val actualBal = line.get("total_actual_balance")?.asDouble ?: 0.0
             val bookBal = line.get("total_balance")?.asDouble ?: 0.0
             val dailyUsed = line.get("daily_deposit_used")?.asDouble ?: 0.0
