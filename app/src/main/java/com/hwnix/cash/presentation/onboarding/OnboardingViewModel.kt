@@ -280,6 +280,7 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
                 if (response.isSuccessful) {
                     val sessionManager = com.hwnix.cash.data.local.SessionManager(context)
                     sessionManager.markSetupComplete()
+                    sessionManager.setWalletMissing(false)
                     _uiState.update { it.copy(isSubmitting = false, isSuccess = true) }
                     // تشغيل المزامنة فور الانتهاء من إعداد المحفظة والخط
                     try {

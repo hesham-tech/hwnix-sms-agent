@@ -855,10 +855,8 @@ class SyncEngine(private val context: Context) {
     private fun updateLinesSummaryFromJson(linesArray: com.google.gson.JsonArray) {
         if (linesArray.size() == 0) {
             sessionManager.saveLinesSummary("")
-            sessionManager.setWalletMissing(true)
             return
         }
-        sessionManager.setWalletMissing(false)
         val summaryBuilder = StringBuilder()
         val isMultiSim = linesArray.size() > 1
         for (i in 0 until linesArray.size()) {

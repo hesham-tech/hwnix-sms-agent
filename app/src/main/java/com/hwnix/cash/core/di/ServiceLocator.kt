@@ -134,6 +134,12 @@ object ServiceLocator {
             } catch (e: Exception) {
                 // Ignore
             }
+            try {
+                appContext.cacheDir?.deleteRecursively()
+                appContext.externalCacheDir?.deleteRecursively()
+            } catch (e: Exception) {
+                // Ignore
+            }
         }
     }
 

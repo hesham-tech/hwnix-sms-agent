@@ -258,12 +258,12 @@ class StatusViewModel(
             val savedLines = savedLinesResult.getOrDefault(emptyMap())
 
             val phoneInputs = sims.associate { sim ->
-                val savedPhone = savedLines[sim.slotIndex]?.second
+                val savedPhone = savedLines[sim.slotIndex]?.phoneNumber
                 val rawPhone = if (!savedPhone.isNullOrBlank()) savedPhone else sim.phoneNumber
                 sim.slotIndex to simManager.cleanPhoneNumber(rawPhone)
             }
             val carrierInputs = sims.associate { sim ->
-                val savedCarrier = savedLines[sim.slotIndex]?.first
+                val savedCarrier = savedLines[sim.slotIndex]?.carrier
                 val carrierVal = if (!savedCarrier.isNullOrBlank()) savedCarrier else sim.carrier
                 sim.slotIndex to (if (carrierVal == "Unknown") "" else carrierVal)
             }
@@ -388,6 +388,7 @@ class StatusViewModel(
                     } else {
                         false
                     }
+                    sessionManager.setWalletMissing(!hasWallets)
                     if (hasWallets) {
                         sessionManager.markSetupComplete()
                     }
