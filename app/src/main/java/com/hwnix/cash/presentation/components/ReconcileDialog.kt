@@ -15,6 +15,10 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ReconcileDialog(
     slotIndex: Int,
+    lineName: String,
+    bookBalance: Double,
+    actualBalance: Double,
+    balanceDiff: Double,
     targetBalance: String,
     note: String,
     isReconciling: Boolean,
@@ -28,7 +32,7 @@ fun ReconcileDialog(
         onDismissRequest = { if (!isReconciling) onDismiss() },
         title = {
             Text(
-                "تسوية رصيد شريحة ${slotIndex + 1}",
+                "تسوية رصيد $lineName",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF0D47A1)
@@ -36,17 +40,37 @@ fun ReconcileDialog(
         },
         text = {
             Column {
-                Text(
-                    "أدخل الرصيد الفعلي الحالي للخط:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("الرصيد الدفتري:", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    Text("$bookBalance ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("الرصيد الفعلي الحالي:", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    Text("$actualBalance ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("الفارق:", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    val diffColor = if (balanceDiff < 0) Color(0xFFB71C1C) else if (balanceDiff > 0) Color(0xFF2E7D32) else Color.Gray
+                    Text("${if(balanceDiff > 0) "+" else ""}$balanceDiff ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = diffColor)
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = targetBalance,
                     onValueChange = { onTargetBalanceChange(it) },
-                    label = { Text("الرصيد الفعلي (ج.م)") },
+                    label = { Text("الرصيد الفعلي (الجديد)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),

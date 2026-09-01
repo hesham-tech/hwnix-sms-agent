@@ -405,13 +405,24 @@ class StatusViewModel(
     // --- وظائف تسوية الرصيد ---
 
     fun openReconcileDialog(slotIndex: Int) {
+        val lineData = _uiState.value.deviceLines[slotIndex]
+        val actualBalance = lineData?.totalActualBalance ?: 0.0
+        val bookBalance = lineData?.totalBalance ?: 0.0
+        val diff = actualBalance - bookBalance
+        val carrier = lineData?.carrier ?: ""
+        val lineName = if (carrier.isNotBlank()) carrier else "شريحة ${slotIndex + 1}"
+        
         _uiState.update { 
             it.copy(
                 showReconcileDialog = true,
                 reconcileSlotIndex = slotIndex,
-                reconcileTargetBalance = "",
-                reconcileNote = "",
-                reconcileResult = null
+                reconcileTargetBalance = if (actualBalance > 0 || actualBalance < 0) actualBalance.toString() else "",
+                reconcileNote = "تسوية بعد مراجعة الرصيد الفعلي",
+                reconcileResult = null,
+                reconcileLineName = lineName,
+                reconcileBookBalance = bookBalance,
+                reconcileActualBalance = actualBalance,
+                reconcileDiff = diff
             ) 
         }
     }

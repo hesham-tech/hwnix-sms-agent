@@ -23,7 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex.zIndex
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.ViewModelProvider
 import com.hwnix.cash.core.di.ViewModelFactory
 import com.hwnix.cash.data.local.SessionManager
@@ -437,6 +437,10 @@ class MainActivity : ComponentActivity() {
                         if (statusState.showReconcileDialog) {
                             ReconcileDialog(
                                 slotIndex = statusState.reconcileSlotIndex,
+                                lineName = statusState.reconcileLineName,
+                                bookBalance = statusState.reconcileBookBalance,
+                                actualBalance = statusState.reconcileActualBalance,
+                                balanceDiff = statusState.reconcileDiff,
                                 targetBalance = statusState.reconcileTargetBalance,
                                 note = statusState.reconcileNote,
                                 isReconciling = statusState.isReconciling,

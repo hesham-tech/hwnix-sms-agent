@@ -376,7 +376,8 @@ fun StatusScreen(
                                             ) {
                                                 Icon(Icons.Filled.AccountBalance, contentDescription = null, modifier = Modifier.size(14.dp))
                                                 Spacer(Modifier.width(4.dp))
-                                                Text("تسوية شريحة ${slot + 1}", style = MaterialTheme.typography.labelSmall)
+                                                val lineName = if (info.carrier.isNotBlank()) info.carrier else "شريحة ${slot + 1}"
+                                                Text("تسوية رصيد $lineName", style = MaterialTheme.typography.labelSmall)
                                             }
 
                                             OutlinedButton(

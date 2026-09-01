@@ -17,7 +17,7 @@ interface DeviceRepository {
     ): Result<Int> // يعيد فترة النبض المحدثة (polling interval)
     
     suspend fun getDeviceConfig(): Result<JsonObject>
-    suspend fun getDeviceLines(deviceId: Long): Result<Map<Int, Pair<String, String>>>
+    suspend fun getDeviceLines(deviceId: Long): Result<Map<Int, com.hwnix.cash.domain.model.LineData>>
     suspend fun getPendingCommands(deviceId: Long): Result<JsonObject>
     suspend fun executeCommand(commandId: Long, idempotencyKey: String, body: JsonObject): Result<JsonObject>
     suspend fun decoupleDevice(deviceId: Long): Result<Unit>

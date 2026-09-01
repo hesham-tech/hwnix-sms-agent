@@ -200,12 +200,12 @@ class DeviceRepositoryImpl(
         }
     }
 
-    override suspend fun getDeviceLines(deviceId: Long): Result<Map<Int, Pair<String, String>>> {
+    override suspend fun getDeviceLines(deviceId: Long): Result<Map<Int, com.hwnix.cash.domain.model.LineData>> {
         return try {
             val response = apiService.getDeviceLines(deviceId)
             if (response.isSuccessful && response.body() != null) {
                 val body = response.body()!!
-                val result = mutableMapOf<Int, Pair<String, String>>()
+                val result = mutableMapOf<Int, com.hwnix.cash.domain.model.LineData>()
                 if (body.get("status")?.asBoolean == true) {
                     val lines = body.getAsJsonArray("data")
                     lines.forEach { element ->
@@ -213,7 +213,15 @@ class DeviceRepositoryImpl(
                         val slotIndex = obj.get("slot_index").asInt
                         val carrier = obj.get("carrier")?.asString ?: ""
                         val phone = obj.get("phone_number")?.asString ?: ""
-                        result[slotIndex] = Pair(carrier, phone)
+                        val totalBalance = obj.get("total_balance")?.asDouble ?: 0.0
+                        val totalActualBalance = obj.get("total_actual_balance")?.asDouble ?: 0.0
+                        result[slotIndex] = com.hwnix.cash.domain.model.LineData(
+                            slotIndex = slotIndex,
+                            carrier = carrier,
+                            phoneNumber = phone,
+                            totalBalance = totalBalance,
+                            totalActualBalance = totalActualBalance
+                        )
                     }
                 }
                 Result.success(result)
