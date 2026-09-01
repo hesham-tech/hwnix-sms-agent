@@ -411,7 +411,7 @@ class StatusViewModel(
         val bookBalance = lineData?.totalBalance ?: 0.0
         val diff = actualBalance - bookBalance
         val carrier = lineData?.carrier ?: ""
-        val lineName = if (carrier.isNotBlank()) carrier else "شريحة ${slotIndex + 1}"
+        val lineName = if (carrier.isNotBlank() && !carrier.equals("Unknown", ignoreCase = true)) carrier else "شريحة ${slotIndex + 1}"
         
         _uiState.update { 
             it.copy(

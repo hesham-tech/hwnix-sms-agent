@@ -376,7 +376,7 @@ fun StatusScreen(
                                             ) {
                                                 Icon(Icons.Filled.AccountBalance, contentDescription = null, modifier = Modifier.size(14.dp))
                                                 Spacer(Modifier.width(4.dp))
-                                                val lineName = if (info.carrier.isNotBlank()) info.carrier else "شريحة ${slot + 1}"
+                                                val lineName = if (info.carrier.isNotBlank() && !info.carrier.equals("Unknown", ignoreCase = true)) info.carrier else "شريحة ${slot + 1}"
                                                 Text("تسوية رصيد $lineName", style = MaterialTheme.typography.labelSmall)
                                             }
 
