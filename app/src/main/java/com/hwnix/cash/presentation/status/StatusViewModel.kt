@@ -417,7 +417,7 @@ class StatusViewModel(
             it.copy(
                 showReconcileDialog = true,
                 reconcileSlotIndex = slotIndex,
-                reconcileTargetBalance = if (actualBalance > 0 || actualBalance < 0) actualBalance.toString() else "",
+                reconcileTargetBalance = actualBalance.toString(),
                 reconcileNote = "تسوية بعد مراجعة الرصيد الفعلي",
                 reconcileResult = null,
                 reconcileLineName = lineName,
