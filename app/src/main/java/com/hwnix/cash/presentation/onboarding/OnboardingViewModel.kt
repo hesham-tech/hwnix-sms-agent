@@ -278,7 +278,15 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
                 }
                 val response = ApiClient.getService().completeOnboarding(body)
                 if (response.isSuccessful) {
+                    val sessionManager = com.hwnix.cash.data.local.SessionManager(context)
+                    sessionManager.markSetupComplete()
                     _uiState.update { it.copy(isSubmitting = false, isSuccess = true) }
+                    // تشغيل المزامنة فور الانتهاء من إعداد المحفظة والخط
+                    try {
+                        com.hwnix.cash.core.di.ServiceLocator.syncEngine.performFullSync()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 } else {
                     val errorObj = response.errorBody()?.string()
                     val errorMsg = if (errorObj != null && errorObj.contains("message")) {

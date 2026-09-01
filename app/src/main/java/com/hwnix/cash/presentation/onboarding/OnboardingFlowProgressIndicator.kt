@@ -44,7 +44,8 @@ fun OnboardingFlowProgressIndicator(
             val isCurrent = stepNumber == currentStep
 
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = if (index < steps.size - 1) Modifier.weight(1f) else Modifier
             ) {
                 // شارة الخطوة (دايرة الرقـم أو صح)
                 Box(

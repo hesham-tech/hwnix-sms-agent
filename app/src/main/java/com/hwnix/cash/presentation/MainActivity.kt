@@ -357,9 +357,9 @@ class MainActivity : ComponentActivity() {
                                 } else if (currentScreen == "company_selection") {
                                     com.hwnix.cash.presentation.screens.CompanySelectionScreen(
                                         onNavigateNext = {
-                                            statusViewModel.performFullSync(syncEngine)
                                             statusViewModel.checkWallets { hasWallets ->
                                                 if (hasWallets) {
+                                                    statusViewModel.performFullSync(syncEngine)
                                                     currentScreen = "status"
                                                 } else {
                                                     navigateTo("onboarding_wizard")

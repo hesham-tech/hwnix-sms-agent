@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hwnix.cash.data.remote.ApiClient
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -226,8 +227,13 @@ fun SetupCompletedScreen(
                 // الزر الثانوي: فتح لوحة التحكم على الويب
                 OutlinedButton(
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://bill.hwnix.com/app/hwnix-cash/dashboard"))
-                        context.startActivity(intent)
+                        val coroutineScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
+                        coroutineScope.launch {
+                            com.hwnix.cash.utils.WebDashboardHelper.openMagicLink(
+                                context,
+                                com.hwnix.cash.data.remote.ApiClient.getService()
+                            )
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()

@@ -122,6 +122,20 @@ object ServiceLocator {
         CheckUpdateUseCase(deviceRepository)
     }
 
+    /**
+     * Clears all local application data, simulating a fresh installation.
+     * Retains only the server URL and Device UUID.
+     */
+    fun clearAllAppData(keepAuthToken: Boolean = false) {
+        sessionManager.clearSession(keepAuthToken)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                database.clearAllTables()
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+    }
 
 }
 

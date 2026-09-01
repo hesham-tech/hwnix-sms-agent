@@ -87,10 +87,13 @@ fun OnboardingWizardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            AnimatedContent(targetState = state.currentStep, label = "Steps") { step ->
+            AnimatedContent(
+                targetState = state.currentStep, 
+                label = "Steps",
+                modifier = Modifier.weight(1f)
+            ) { step ->
                 Column(modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
+                    .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                 ) {
                     when (step) {
@@ -299,6 +302,9 @@ fun StepWalletDetails(state: OnboardingUiState, viewModel: OnboardingViewModel) 
             state.availableSims.map { it.phoneNumber }.filter { it.isNotBlank() }
         }
     }
+
+    Text("إعداد بيانات المحفظة:", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    Spacer(modifier = Modifier.height(12.dp))
 
     OutlinedTextField(
         value = state.walletName,

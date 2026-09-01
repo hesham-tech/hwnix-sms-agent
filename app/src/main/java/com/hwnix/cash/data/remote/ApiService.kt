@@ -26,6 +26,9 @@ interface ApiService {
     @GET("v1/agent/companies")
     suspend fun getCompanies(): Response<JsonObject>
 
+    @POST("v1/agent/auth/magic-link")
+    suspend fun generateMagicLink(): Response<JsonObject>
+
 
     @POST("v1/agent/device/register")
     suspend fun registerDevice(

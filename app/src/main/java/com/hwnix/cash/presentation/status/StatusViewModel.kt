@@ -352,7 +352,7 @@ class StatusViewModel(
                     // تجاهل الأخطاء لضمان تسجيل الخروج المحلي في حال انقطاع الشبكة
                 }
             }
-            sessionManager.clearSession()
+            com.hwnix.cash.core.di.ServiceLocator.clearAllAppData()
             onLogoutSuccess()
         }
     }
@@ -387,6 +387,9 @@ class StatusViewModel(
                         body.getAsJsonArray("data").size() > 0
                     } else {
                         false
+                    }
+                    if (hasWallets) {
+                        sessionManager.markSetupComplete()
                     }
                     onResult(hasWallets)
                 } else {

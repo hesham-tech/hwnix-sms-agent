@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import java.io.File
 
 // مكوّن القائمة الجانبية - يحتوي على التنقل وخيارات الحساب وزر الخروج مع تأكيد
@@ -213,8 +214,13 @@ fun AppDrawer(
                     icon = { Icon(Icons.Filled.OpenInNew, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     selected = false,
                     onClick = {
-                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://bill.hwnix.com/app/hwnix-cash/dashboard"))
-                        context.startActivity(intent)
+                        val coroutineScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
+                        coroutineScope.launch {
+                            com.hwnix.cash.utils.WebDashboardHelper.openMagicLink(
+                                context,
+                                com.hwnix.cash.data.remote.ApiClient.getService()
+                            )
+                        }
                     },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)

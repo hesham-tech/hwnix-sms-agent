@@ -37,6 +37,7 @@ class AuthRepositoryImpl(
                 if (responseBody.get("status")?.asBoolean == true) {
                     val data = responseBody.getAsJsonObject("data")
                     val token = data.get("token").asString
+                    com.hwnix.cash.core.di.ServiceLocator.clearAllAppData()
                     sessionManager.saveAuthToken(token)
                     ApiClient.resetClient()
                     return Result.success(Unit)
@@ -76,7 +77,7 @@ class AuthRepositoryImpl(
                 if (responseBody.get("status")?.asBoolean == true) {
                     val data = responseBody.getAsJsonObject("data")
                     val token = data.get("token").asString
-                    sessionManager.clearSession()
+                    com.hwnix.cash.core.di.ServiceLocator.clearAllAppData()
                     sessionManager.saveAuthToken(token)
                     ApiClient.resetClient()
                     return Result.success(Unit)
@@ -92,7 +93,7 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun logout(): Result<Unit> {
-        sessionManager.clearSession()
+        com.hwnix.cash.core.di.ServiceLocator.clearAllAppData()
         return Result.success(Unit)
     }
 

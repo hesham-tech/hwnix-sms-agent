@@ -77,9 +77,9 @@ class CompanySelectionViewModel : ViewModel() {
                 val oldId = sessionManager.getCompanyId()
                 if (oldId != companyId) {
                     // Clear old cache and reload settings
+                    ServiceLocator.clearAllAppData(keepAuthToken = true)
                     sessionManager.saveCompanyId(companyId)
                     _selectedCompanyId.value = companyId
-                    // TODO: Triggers clear cache and reload settings globally
                 }
             }
         }

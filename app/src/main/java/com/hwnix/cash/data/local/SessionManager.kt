@@ -163,15 +163,21 @@ class SessionManager(context: Context) {
         return cleaned
     }
 
-    fun clearSession() {
-        sharedPreferences.edit()
-            .remove(KEY_AUTH_TOKEN)
-            .remove(KEY_DEVICE_ID)
-            .remove(KEY_CONFIG_VERSION)
-            .remove(KEY_SETUP_COMPLETE)
-            .remove(KEY_LAST_SYNC_SUCCESS)
-            .remove(KEY_COMPANY_ID)
-            .apply()
+    fun clearSession(keepAuthToken: Boolean = false) {
+        val baseUrl = getBaseUrl()
+        val deviceUuid = getDeviceUuid()
+        val token = if (keepAuthToken) getAuthToken() else null
+
+        val editor = sharedPreferences.edit()
+            .clear()
+            .putString(KEY_BASE_URL, baseUrl)
+            .putString(KEY_DEVICE_UUID, deviceUuid)
+            
+        if (token != null) {
+            editor.putString(KEY_AUTH_TOKEN, token)
+        }
+        
+        editor.apply()
     }
 
     fun getLastSyncSuccessTime(): Long {
@@ -204,6 +210,14 @@ class SessionManager(context: Context) {
 
     fun saveLinesSummary(summary: String) {
         sharedPreferences.edit().putString("lines_summary", summary).apply()
+    }
+
+    fun setWalletMissing(missing: Boolean) {
+        sharedPreferences.edit().putBoolean("wallet_missing", missing).apply()
+    }
+
+    fun isWalletMissing(): Boolean {
+        return sharedPreferences.getBoolean("wallet_missing", false)
     }
 
     fun getCompanyId(): Long {

@@ -49,6 +49,12 @@ class SyncEngine(private val context: Context) {
             return
         }
         
+        // منع المزامنة نهائياً في حال كان الحساب في مرحلة إعداد المحفظة (Onboarding)
+        if (!sessionManager.isSetupComplete()) {
+            logAndTrace("TRACE_SYNC: Aborted (Setup not completed yet)")
+            return
+        }
+        
         if (!syncMutex.tryLock()) {
             logAndTrace("TRACE_SYNC: Sync already in progress, skipping concurrent run.")
             return
@@ -785,7 +791,7 @@ class SyncEngine(private val context: Context) {
     private suspend fun handleDeviceVerification(responseCode: Int): Boolean {
         if (responseCode == 403) {
             Log.e(TAG, "Device explicitly decoupled by user from admin panel. Logging out...")
-            sessionManager.clearSession()
+            com.hwnix.cash.core.di.ServiceLocator.clearAllAppData()
             try {
                 val serviceIntent = Intent(context, AgentForegroundService::class.java)
                 context.stopService(serviceIntent)
@@ -847,7 +853,12 @@ class SyncEngine(private val context: Context) {
     }
 
     private fun updateLinesSummaryFromJson(linesArray: com.google.gson.JsonArray) {
-        if (linesArray.size() == 0) return
+        if (linesArray.size() == 0) {
+            sessionManager.saveLinesSummary("")
+            sessionManager.setWalletMissing(true)
+            return
+        }
+        sessionManager.setWalletMissing(false)
         val summaryBuilder = StringBuilder()
         val isMultiSim = linesArray.size() > 1
         for (i in 0 until linesArray.size()) {

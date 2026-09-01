@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.hwnix.cash.data.local.BootTracker
 import com.hwnix.cash.data.local.ServiceHealthMonitor
 import com.hwnix.cash.manager.oem.OEMAutostartHelper
@@ -78,6 +79,38 @@ fun StatusScreen(
             val sessionManager = remember { com.hwnix.cash.core.di.ServiceLocator.sessionManager }
             val limitAlertsSummary = remember(state.isRefreshing) { sessionManager.getLimitAlertsSummary() }
             val linesSummary = remember(state.isRefreshing) { sessionManager.getLinesSummary() }
+            val isWalletMissing = remember(state.isRefreshing) { sessionManager.isWalletMissing() }
+
+            if (isWalletMissing) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { /* Cannot dismiss until wallet is created */ },
+                    title = {
+                        Text(
+                            text = "إضافة محفظة",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Text("لابد من اضافة محفظة حتي يعمل التطبيق بشكل طبيعي وحساب الارصدة والحدود وما الي ذلك.")
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                onAddWalletClick()
+                            }
+                        ) {
+                            Text("إنشاء محفظة")
+                        }
+                    },
+                    icon = {
+                        Icon(
+                            androidx.compose.material.icons.Icons.Filled.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                )
+            }
 
             // ─── بطاقة تنبيه حدود الحسابات ───────────────────────────────
             AnimatedVisibility(
@@ -281,7 +314,7 @@ fun StatusScreen(
 
             // ─── بطاقة أرصدة وحدود خطوط الهاتف ────────────────────────────
             AnimatedVisibility(
-                visible = visible,
+                visible = visible && !isWalletMissing && linesSummary.isNotBlank(),
                 enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 2 }
             ) {
                 Card(
@@ -362,12 +395,6 @@ fun StatusScreen(
                                     }
                                 }
                             }
-                        } else {
-                            Text(
-                                text = "لا توجد أرقام مسجلة أو جاري تحديث البيانات من السيرفر...",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline
-                            )
                         }
                     }
                 }
@@ -526,11 +553,13 @@ fun StatusScreen(
                     // زر فتح لوحة التحكم على الويب
                     OutlinedButton(
                         onClick = {
-                            val intent = android.content.Intent(
-                                android.content.Intent.ACTION_VIEW,
-                                android.net.Uri.parse("https://bill.hwnix.com/app/hwnix-cash/dashboard")
-                            )
-                            context.startActivity(intent)
+                            val coroutineScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
+                            coroutineScope.launch {
+                                com.hwnix.cash.utils.WebDashboardHelper.openMagicLink(
+                                    context,
+                                    com.hwnix.cash.data.remote.ApiClient.getService()
+                                )
+                            }
                         },
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
