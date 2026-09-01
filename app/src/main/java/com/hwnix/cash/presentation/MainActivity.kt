@@ -455,7 +455,7 @@ class MainActivity : ComponentActivity() {
                         // Dialog حذف الخط نهائياً
                         if (statusState.showDeleteDialog) {
                             DeleteDialog(
-                                slotIndex = statusState.deleteSlotIndex,
+                                lineName = statusState.deleteLineName,
                                 isDeleting = statusState.isDeleting,
                                 deleteResult = statusState.deleteResult,
                                 onDelete = { statusViewModel.deleteLine() },

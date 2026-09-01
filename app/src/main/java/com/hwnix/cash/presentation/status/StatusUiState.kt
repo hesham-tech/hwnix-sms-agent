@@ -50,6 +50,7 @@ data class StatusUiState(
     // حذف الخطوط
     val showDeleteDialog: Boolean = false,
     val deleteSlotIndex: Int = 0,
+    val deleteLineName: String = "",
     val isDeleting: Boolean = false,
     val deleteResult: String? = null
 )

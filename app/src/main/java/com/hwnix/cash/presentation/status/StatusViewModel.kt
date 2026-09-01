@@ -410,8 +410,9 @@ class StatusViewModel(
         val actualBalance = lineData?.totalActualBalance ?: 0.0
         val bookBalance = lineData?.totalBalance ?: 0.0
         val diff = actualBalance - bookBalance
-        val carrier = lineData?.carrier ?: ""
-        val lineName = if (carrier.isNotBlank() && !carrier.equals("Unknown", ignoreCase = true)) carrier else "شريحة ${slotIndex + 1}"
+        val serverCarrier = lineData?.carrier ?: ""
+        val hardwareCarrier = _uiState.value.detectedSims.find { it.slotIndex == slotIndex }?.carrier ?: ""
+        val lineName = com.hwnix.cash.utils.LineNameHelper.resolveLineName(serverCarrier, hardwareCarrier, slotIndex)
         
         _uiState.update { 
             it.copy(
@@ -485,10 +486,15 @@ class StatusViewModel(
     // --- وظائف حذف الخط ---
 
     fun openDeleteDialog(slotIndex: Int) {
+        val serverCarrier = _uiState.value.deviceLines[slotIndex]?.carrier ?: ""
+        val hardwareCarrier = _uiState.value.detectedSims.find { it.slotIndex == slotIndex }?.carrier ?: ""
+        val lineName = com.hwnix.cash.utils.LineNameHelper.resolveLineName(serverCarrier, hardwareCarrier, slotIndex)
+
         _uiState.update { 
             it.copy(
                 showDeleteDialog = true,
                 deleteSlotIndex = slotIndex,
+                deleteLineName = lineName,
                 deleteResult = null
             ) 
         }

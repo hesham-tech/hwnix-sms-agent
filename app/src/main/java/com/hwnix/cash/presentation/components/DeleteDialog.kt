@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun DeleteDialog(
-    slotIndex: Int,
+    lineName: String,
     isDeleting: Boolean,
     deleteResult: String?,
     onDelete: () -> Unit,
@@ -38,7 +38,7 @@ fun DeleteDialog(
         text = {
             Column {
                 Text(
-                    "هل أنت متأكد من رغبتك في حذف شريحة ${slotIndex + 1}؟\n\n" +
+                    "هل أنت متأكد من رغبتك في حذف $lineName؟\n\n" +
                     "تحذير: سيتم حذف الخط وجميع المحافظ التابعة له، وكل الرسائل وسجل العمليات نهائياً وبدون رجعة (Force Delete).",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFFC62828)

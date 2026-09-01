@@ -376,7 +376,9 @@ fun StatusScreen(
                                             ) {
                                                 Icon(Icons.Filled.AccountBalance, contentDescription = null, modifier = Modifier.size(14.dp))
                                                 Spacer(Modifier.width(4.dp))
-                                                val lineName = if (info.carrier.isNotBlank() && !info.carrier.equals("Unknown", ignoreCase = true)) info.carrier else "شريحة ${slot + 1}"
+                                                val serverCarrier = state.deviceLines[slot]?.carrier ?: ""
+                                                val hardwareCarrier = info.carrier
+                                                val lineName = com.hwnix.cash.utils.LineNameHelper.resolveLineName(serverCarrier, hardwareCarrier, slot)
                                                 Text("تسوية رصيد $lineName", style = MaterialTheme.typography.labelSmall)
                                             }
 
@@ -390,7 +392,7 @@ fun StatusScreen(
                                             ) {
                                                 Icon(Icons.Filled.DeleteForever, contentDescription = null, modifier = Modifier.size(14.dp))
                                                 Spacer(Modifier.width(4.dp))
-                                                Text("حذف شريحة ${slot + 1}", style = MaterialTheme.typography.labelSmall)
+                                                Text("حذف $lineName", style = MaterialTheme.typography.labelSmall)
                                             }
                                         }
                                     }
