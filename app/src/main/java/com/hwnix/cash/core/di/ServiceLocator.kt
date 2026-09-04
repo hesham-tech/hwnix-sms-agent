@@ -21,6 +21,7 @@ import com.hwnix.cash.manager.battery.BatteryManager
 import com.hwnix.cash.manager.sim.SimManager
 import com.hwnix.cash.manager.update.UpdateManager
 
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 // محدد الخدمات لتوفير وحقن الاعتمادات يدوياً بشكل آمن وتجنب تكرار التهيئة

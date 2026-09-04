@@ -143,20 +143,7 @@ class MainActivity : ComponentActivity() {
                         val registerState by registerViewModel.uiState.collectAsState()
                         val statusState by statusViewModel.uiState.collectAsState()
 
-                        val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-                        DisposableEffect(lifecycleOwner) {
-                            val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-                                if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                                    if (sessionManager.getAuthToken() != null) {
-                                        statusViewModel.refreshDeviceInfo()
-                                    }
-                                }
-                            }
-                            lifecycleOwner.lifecycle.addObserver(observer)
-                            onDispose {
-                                lifecycleOwner.lifecycle.removeObserver(observer)
-                            }
-                        }
+
 
                         // فحص حالة تحسين البطارية والتحديثات تلقائياً
                         LaunchedEffect(isStarting) {
