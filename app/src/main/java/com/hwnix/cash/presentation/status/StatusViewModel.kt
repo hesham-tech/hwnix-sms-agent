@@ -402,13 +402,13 @@ class StatusViewModel(
                             wallets.add(
                                 com.hwnix.cash.domain.model.FinancialAccount(
                                     id = obj.get("id").asInt,
-                                    name = obj.get("name")?.asString ?: "",
-                                    senderIdentifier = obj.get("messageSource")?.asJsonObject?.get("sender_identifier")?.asString ?: "",
-                                    simPhone = obj.get("line")?.asJsonObject?.get("phone_number")?.asString ?: "",
-                                    dailyWithdrawLimit = obj.get("daily_withdraw_limit")?.asDouble,
-                                    dailyDepositLimit = obj.get("daily_deposit_limit")?.asDouble,
-                                    monthlyWithdrawLimit = obj.get("monthly_withdraw_limit")?.asDouble,
-                                    monthlyDepositLimit = obj.get("monthly_deposit_limit")?.asDouble
+                                    name = obj.get("name")?.let { if (it.isJsonNull) "" else it.asString } ?: "",
+                                    senderIdentifier = obj.get("sender")?.let { if (it.isJsonNull) "" else it.asString } ?: "",
+                                    simPhone = obj.get("line_number")?.let { if (it.isJsonNull) "" else it.asString } ?: "",
+                                    dailyWithdrawLimit = obj.get("daily_withdraw_limit")?.let { if (it.isJsonNull) 0.0 else it.asDouble } ?: 0.0,
+                                    dailyDepositLimit = obj.get("daily_deposit_limit")?.let { if (it.isJsonNull) 0.0 else it.asDouble } ?: 0.0,
+                                    monthlyWithdrawLimit = obj.get("monthly_withdraw_limit")?.let { if (it.isJsonNull) 0.0 else it.asDouble } ?: 0.0,
+                                    monthlyDepositLimit = obj.get("monthly_deposit_limit")?.let { if (it.isJsonNull) 0.0 else it.asDouble } ?: 0.0
                                 )
                             )
                         }

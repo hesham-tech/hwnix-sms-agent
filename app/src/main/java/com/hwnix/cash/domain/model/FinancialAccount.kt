@@ -8,5 +8,13 @@ data class FinancialAccount(
     val dailyWithdrawLimit: Double?,
     val dailyDepositLimit: Double?,
     val monthlyWithdrawLimit: Double?,
-    val monthlyDepositLimit: Double?
+    val monthlyDepositLimit: Double?,
+    val dailyWithdrawAlertValue: Double? = null,
+    val dailyWithdrawAlertType: String = "percentage",
+    val dailyDepositAlertValue: Double? = null,
+    val dailyDepositAlertType: String = "percentage",
+    val monthlyWithdrawAlertValue: Double? = null,
+    val monthlyWithdrawAlertType: String = "percentage",
+    val monthlyDepositAlertValue: Double? = null,
+    val monthlyDepositAlertType: String = "percentage"
 )

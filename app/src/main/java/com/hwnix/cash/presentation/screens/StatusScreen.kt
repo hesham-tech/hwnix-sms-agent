@@ -46,11 +46,10 @@ fun StatusScreen(
     onSyncNowClick: () -> Unit,
     onSimSetupClick: () -> Unit,
     onBatteryOptimizeClick: () -> Unit,
-    onAddWalletClick: () -> Unit,
+    onAddWalletForLineClick: (String) -> Unit,
     onReconcileLineClick: (Int) -> Unit = {},
     onDeleteLineClick: (Int) -> Unit = {},
     onEditWalletClick: (com.hwnix.cash.domain.model.FinancialAccount) -> Unit = {},
-    // تم نقله للـ Drawer - احتفاظ بالمعامل للتوافق
     onLogoutClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -351,67 +350,120 @@ fun StatusScreen(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Spacer(Modifier.height(10.dp))
 
-                        if (linesSummary.isNotBlank()) {
-                            Text(
-                                text = linesSummary,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 20.sp
-                            )
-                            
-                            if (state.deviceLines.isNotEmpty()) {
+                        if (state.deviceLines.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     state.deviceLines.forEach { (slot, info) ->
                                         val serverCarrier = info.carrier ?: ""
                                         val hardwareCarrier = state.detectedSims.find { it.slotIndex == slot }?.carrier ?: ""
                                         val lineName = com.hwnix.cash.utils.LineNameHelper.resolveLineName(serverCarrier, hardwareCarrier, slot)
+                                        val phoneStr = info.phoneNumber
+                                        val lineWallet = state.wallets.find { it.simPhone == phoneStr || (phoneStr.isNotEmpty() && it.simPhone.contains(phoneStr)) }
 
-                                        Column(
-                                            modifier = Modifier.weight(1f),
-                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                            shape = RoundedCornerShape(12.dp)
                                         ) {
-                                            OutlinedButton(
-                                                onClick = { onReconcileLineClick(slot) },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                shape = RoundedCornerShape(10.dp),
-                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0D47A1)),
-                                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF0D47A1).copy(alpha = 0.5f)),
-                                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
-                                            ) {
-                                                Icon(Icons.Filled.AccountBalance, contentDescription = null, modifier = Modifier.size(14.dp))
-                                                Spacer(Modifier.width(4.dp))
-                                                Text("تسوية رصيد $lineName", style = MaterialTheme.typography.labelSmall)
-                                            }
-                                            val phoneStr = info.phoneNumber
-                                            val lineWallet = state.wallets.find { it.simPhone == phoneStr || (phoneStr.isNotEmpty() && it.simPhone.contains(phoneStr)) }
-                                            
-                                            if (lineWallet != null) {
-                                                OutlinedButton(
-                                                    onClick = { onEditWalletClick(lineWallet) },
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    shape = RoundedCornerShape(10.dp),
-                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE65100)),
-                                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE65100).copy(alpha = 0.5f)),
-                                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                                            Column(modifier = Modifier.padding(12.dp)) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier.fillMaxWidth()
                                                 ) {
-                                                    Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
-                                                    Spacer(Modifier.width(4.dp))
-                                                    Text("تعديل محفظة $lineName", style = MaterialTheme.typography.labelSmall)
+                                                    Icon(Icons.Filled.SimCard, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                    Spacer(Modifier.width(6.dp))
+                                                    Text(
+                                                        text = if (lineWallet != null) "${lineWallet.name} ($lineName)" else "خط $lineName",
+                                                        style = MaterialTheme.typography.titleSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
                                                 }
-                                            }
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                
+                                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                    Column {
+                                                        Text("الرصيد الفعلي", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                                        Text("${info.totalActualBalance} ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                                    }
+                                                    Column(horizontalAlignment = Alignment.End) {
+                                                        Text("الرصيد الدفتري", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                                        Text("${info.totalBalance} ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                                    }
+                                                }
+                                                if (lineWallet != null && (lineWallet.dailyWithdrawLimit != null || lineWallet.dailyDepositLimit != null)) {
+                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                        Column {
+                                                            Text("حد السحب اليومي", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                                            Text("${lineWallet.dailyWithdrawLimit ?: 0.0} ج.م", style = MaterialTheme.typography.bodySmall)
+                                                        }
+                                                        Column(horizontalAlignment = Alignment.End) {
+                                                            Text("حد الإيداع اليومي", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                                            Text("${lineWallet.dailyDepositLimit ?: 0.0} ج.م", style = MaterialTheme.typography.bodySmall)
+                                                        }
+                                                    }
+                                                }
+                                                Spacer(modifier = Modifier.height(12.dp))
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    OutlinedButton(
+                                                        onClick = { onReconcileLineClick(slot) },
+                                                        modifier = Modifier.weight(1f),
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0D47A1)),
+                                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF0D47A1).copy(alpha = 0.5f)),
+                                                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp)
+                                                    ) {
+                                                        Icon(Icons.Filled.AccountBalance, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                        Spacer(Modifier.width(4.dp))
+                                                        Text("تسوية", style = MaterialTheme.typography.labelSmall)
+                                                    }
 
-                                            OutlinedButton(
-                                                onClick = { onDeleteLineClick(slot) },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                shape = RoundedCornerShape(10.dp),
-                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB71C1C)),
-                                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFB71C1C).copy(alpha = 0.5f)),
-                                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
-                                            ) {
-                                                Icon(Icons.Filled.DeleteForever, contentDescription = null, modifier = Modifier.size(14.dp))
-                                                Spacer(Modifier.width(4.dp))
-                                                Text("حذف $lineName", style = MaterialTheme.typography.labelSmall)
+                                                    if (lineWallet != null) {
+                                                        OutlinedButton(
+                                                            onClick = { onEditWalletClick(lineWallet) },
+                                                            modifier = Modifier.weight(1f),
+                                                            shape = RoundedCornerShape(8.dp),
+                                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE65100)),
+                                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE65100).copy(alpha = 0.5f)),
+                                                            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp)
+                                                        ) {
+                                                            Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                            Spacer(Modifier.width(4.dp))
+                                                            Text("تعديل", style = MaterialTheme.typography.labelSmall)
+                                                        }
+                                                    } else {
+                                                        OutlinedButton(
+                                                            onClick = { onAddWalletForLineClick(info.phoneNumber) },
+                                                            modifier = Modifier.weight(2f),
+                                                            shape = RoundedCornerShape(8.dp),
+                                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2E7D32)),
+                                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2E7D32).copy(alpha = 0.5f)),
+                                                            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp)
+                                                        ) {
+                                                            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                            Spacer(Modifier.width(4.dp))
+                                                            Text("إنشاء محفظة لهذا الخط", style = MaterialTheme.typography.labelSmall)
+                                                        }
+                                                    }
+
+                                                    OutlinedButton(
+                                                        onClick = { onDeleteLineClick(slot) },
+                                                        modifier = Modifier.weight(1f),
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB71C1C)),
+                                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFB71C1C).copy(alpha = 0.5f)),
+                                                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp)
+                                                    ) {
+                                                        Icon(Icons.Filled.DeleteForever, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                        Spacer(Modifier.width(4.dp))
+                                                        Text("حذف", style = MaterialTheme.typography.labelSmall)
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -608,40 +660,12 @@ fun StatusScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
 
-                    OutlinedButton(
-                        onClick = onAddWalletClick,
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFF0D47A1)
-                        ),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.5.dp,
-                            Color(0xFF0D47A1).copy(alpha = 0.6f)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.AddCard,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "إضافة محفظة جديدة",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                    }
 
                 }
             }
         }
     }
-}
 
 // ─── مكوّن كارت الإحصائية ───────────────────────────────────────────────────
 @Composable

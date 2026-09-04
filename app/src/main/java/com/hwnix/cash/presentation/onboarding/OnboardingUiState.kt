@@ -30,6 +30,14 @@ data class OnboardingUiState(
     val dailyDepositLimit: String = "",
     val monthlyWithdrawLimit: String = "",
     val monthlyDepositLimit: String = "",
+    val dailyWithdrawAlertValue: String = "",
+    val dailyWithdrawAlertType: String = "percentage",
+    val dailyDepositAlertValue: String = "",
+    val dailyDepositAlertType: String = "percentage",
+    val monthlyWithdrawAlertValue: String = "",
+    val monthlyWithdrawAlertType: String = "percentage",
+    val monthlyDepositAlertValue: String = "",
+    val monthlyDepositAlertType: String = "percentage",
     
     // Step 4: Review
     val isSubmitting: Boolean = false,

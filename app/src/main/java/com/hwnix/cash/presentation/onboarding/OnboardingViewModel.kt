@@ -260,6 +260,26 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
         }
     }
 
+    fun onAlertLimitChange(
+        dwValue: String, dwType: String,
+        ddValue: String, ddType: String,
+        mwValue: String, mwType: String,
+        mdValue: String, mdType: String
+    ) {
+        _uiState.update { 
+            it.copy(
+                dailyWithdrawAlertValue = dwValue,
+                dailyWithdrawAlertType = dwType,
+                dailyDepositAlertValue = ddValue,
+                dailyDepositAlertType = ddType,
+                monthlyWithdrawAlertValue = mwValue,
+                monthlyWithdrawAlertType = mwType,
+                monthlyDepositAlertValue = mdValue,
+                monthlyDepositAlertType = mdType
+            )
+        }
+    }
+
     fun loadWalletForEdit(wallet: com.hwnix.cash.domain.model.FinancialAccount) {
         _uiState.update {
             it.copy(
@@ -272,18 +292,27 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
                 dailyWithdrawLimit = wallet.dailyWithdrawLimit?.toString() ?: "",
                 dailyDepositLimit = wallet.dailyDepositLimit?.toString() ?: "",
                 monthlyWithdrawLimit = wallet.monthlyWithdrawLimit?.toString() ?: "",
-                monthlyDepositLimit = wallet.monthlyDepositLimit?.toString() ?: ""
+                monthlyDepositLimit = wallet.monthlyDepositLimit?.toString() ?: "",
+                dailyWithdrawAlertValue = wallet.dailyWithdrawAlertValue?.toString() ?: "",
+                dailyWithdrawAlertType = wallet.dailyWithdrawAlertType ?: "percentage",
+                dailyDepositAlertValue = wallet.dailyDepositAlertValue?.toString() ?: "",
+                dailyDepositAlertType = wallet.dailyDepositAlertType ?: "percentage",
+                monthlyWithdrawAlertValue = wallet.monthlyWithdrawAlertValue?.toString() ?: "",
+                monthlyWithdrawAlertType = wallet.monthlyWithdrawAlertType ?: "percentage",
+                monthlyDepositAlertValue = wallet.monthlyDepositAlertValue?.toString() ?: "",
+                monthlyDepositAlertType = wallet.monthlyDepositAlertType ?: "percentage"
             )
         }
     }
 
-    fun startAddWalletMode() {
+    fun startAddWalletForLineMode(phone: String) {
         _uiState.update {
             it.copy(
                 isEditMode = false,
                 editingWalletId = null,
                 currentStep = 2,
                 walletName = "",
+                selectedSimPhone = phone,
                 selectedSender = "",
                 dailyWithdrawLimit = "",
                 dailyDepositLimit = "",
@@ -310,6 +339,18 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
                     addProperty("daily_deposit_limit", state.dailyDepositLimit.toDoubleOrNull() ?: 0.0)
                     addProperty("monthly_withdraw_limit", state.monthlyWithdrawLimit.toDoubleOrNull() ?: 0.0)
                     addProperty("monthly_deposit_limit", state.monthlyDepositLimit.toDoubleOrNull() ?: 0.0)
+
+                    state.dailyWithdrawAlertValue.toDoubleOrNull()?.let { addProperty("daily_withdraw_alert_value", it) }
+                    addProperty("daily_withdraw_alert_type", state.dailyWithdrawAlertType)
+                    
+                    state.dailyDepositAlertValue.toDoubleOrNull()?.let { addProperty("daily_deposit_alert_value", it) }
+                    addProperty("daily_deposit_alert_type", state.dailyDepositAlertType)
+                    
+                    state.monthlyWithdrawAlertValue.toDoubleOrNull()?.let { addProperty("monthly_withdraw_alert_value", it) }
+                    addProperty("monthly_withdraw_alert_type", state.monthlyWithdrawAlertType)
+                    
+                    state.monthlyDepositAlertValue.toDoubleOrNull()?.let { addProperty("monthly_deposit_alert_value", it) }
+                    addProperty("monthly_deposit_alert_type", state.monthlyDepositAlertType)
                 }
                 val response = if (state.isEditMode && state.editingWalletId != null) {
                     ApiClient.getService().updateWallet(state.editingWalletId, body)

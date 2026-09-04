@@ -392,8 +392,8 @@ class MainActivity : ComponentActivity() {
                                         onBatteryOptimizeClick = {
                                             statusViewModel.disableBatteryOptimization()
                                         },
-                                        onAddWalletClick = {
-                                            onboardingViewModel.startAddWalletMode()
+                                        onAddWalletForLineClick = { phone ->
+                                            onboardingViewModel.startAddWalletForLineMode(phone)
                                             navigateTo("onboarding_wizard")
                                         },
                                         onReconcileLineClick = { statusViewModel.openReconcileDialog(it) },
