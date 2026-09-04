@@ -37,12 +37,18 @@ class StatusViewModel(
             com.hwnix.cash.data.local.ServiceHealthMonitor.healthFlow.collect { health ->
                 val connStatus = when {
                     sessionManager.getAuthToken() == null -> "غير متصل"
-                    !health.isInternetAvailable -> "غير متصل (لا يوجد إنترنت)"
-                    health.overallHealth == com.hwnix.cash.data.local.ServiceHealthState.BROKEN -> "غير متصل (الخدمة متوقفة)"
+                    !health.isInternetAvailable -> "غير متصل (لا يوجد انترنت)"
+                    health.overallHealth == com.hwnix.cash.data.local.ServiceHealthState.BROKEN -> "غير متصل (الخدمة معطلة)"
                     health.isInternetAvailable -> "متصل"
                     else -> "غير متصل"
                 }
                 _uiState.update { it.copy(connectionStatus = connStatus) }
+            }
+        }
+        
+        viewModelScope.launch {
+            com.hwnix.cash.core.di.ServiceLocator.syncEvents.collect {
+                refreshDeviceInfo()
             }
         }
     }
@@ -130,6 +136,7 @@ class StatusViewModel(
                 if (linesResult.isSuccess) {
                     _uiState.update { it.copy(deviceLines = linesResult.getOrDefault(emptyMap())) }
                 }
+                checkWallets { }
             }
 
             // إذا لم يتم الإعداد بعد الدخول لأول مرة
@@ -388,6 +395,25 @@ class StatusViewModel(
                     } else {
                         false
                     }
+                    val wallets = mutableListOf<com.hwnix.cash.domain.model.FinancialAccount>()
+                    if (hasWallets) {
+                        body?.getAsJsonArray("data")?.forEach { element ->
+                            val obj = element.asJsonObject
+                            wallets.add(
+                                com.hwnix.cash.domain.model.FinancialAccount(
+                                    id = obj.get("id").asInt,
+                                    name = obj.get("name")?.asString ?: "",
+                                    senderIdentifier = obj.get("messageSource")?.asJsonObject?.get("sender_identifier")?.asString ?: "",
+                                    simPhone = obj.get("line")?.asJsonObject?.get("phone_number")?.asString ?: "",
+                                    dailyWithdrawLimit = obj.get("daily_withdraw_limit")?.asDouble,
+                                    dailyDepositLimit = obj.get("daily_deposit_limit")?.asDouble,
+                                    monthlyWithdrawLimit = obj.get("monthly_withdraw_limit")?.asDouble,
+                                    monthlyDepositLimit = obj.get("monthly_deposit_limit")?.asDouble
+                                )
+                            )
+                        }
+                    }
+                    _uiState.update { it.copy(wallets = wallets) }
                     sessionManager.setWalletMissing(!hasWallets)
                     if (hasWallets) {
                         sessionManager.markSetupComplete()

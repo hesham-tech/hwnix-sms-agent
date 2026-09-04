@@ -110,6 +110,12 @@ class AgentForegroundService : Service() {
                 context = applicationContext
             )
 
+            serviceScope.launch {
+                com.hwnix.cash.core.di.ServiceLocator.syncEvents.collect {
+                    updateLiveNotification(force = true)
+                }
+            }
+
             promoteToForeground()
             ensureDependencies()
             registerNetworkMonitor()

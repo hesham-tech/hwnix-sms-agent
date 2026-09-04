@@ -150,7 +150,7 @@ fun OnboardingWizardScreen(
 fun canProceedToNextStep(state: OnboardingUiState): Boolean {
     return when (state.currentStep) {
         1 -> !state.isDiscovering && (state.line1Phone.isNotBlank() || state.line2Phone.isNotBlank())
-        2 -> state.walletName.isNotBlank() && state.selectedSimPhone.isNotBlank() && state.selectedSender.isNotBlank()
+        2 -> state.walletName.isNotBlank() && state.selectedSimPhone.isNotBlank() && state.selectedSender.isNotBlank() && state.selectedSender != "اختر مصدر الرسائل"
         3 -> true
         else -> true
     }
@@ -352,10 +352,12 @@ fun StepWalletDetails(state: OnboardingUiState, viewModel: OnboardingViewModel) 
         expanded = expandedSender,
         onExpandedChange = { expandedSender = it }
     ) {
+        val displayValue = if (state.selectedSender.isBlank()) "" else state.selectedSender
         OutlinedTextField(
-            value = state.selectedSender,
+            value = displayValue,
             onValueChange = { viewModel.onSenderChange(it) },
-            label = { Text("مصدر رسائل المحفظة (Sender)") },
+            label = { Text("مصدر الرسائل *") },
+            placeholder = { Text("اختر مصدر الرسائل") },
             modifier = Modifier.fillMaxWidth().menuAnchor(),
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSender) },
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()

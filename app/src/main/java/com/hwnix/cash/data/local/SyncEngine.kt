@@ -887,6 +887,7 @@ class SyncEngine(private val context: Context) {
         }
         val linesSummaryText = summaryBuilder.toString()
         sessionManager.saveLinesSummary(linesSummaryText)
+        com.hwnix.cash.core.di.ServiceLocator.emitSyncEvent()
         Log.i(TAG, "Updated lines summary from server: $linesSummaryText")
     }
 }

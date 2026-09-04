@@ -49,6 +49,7 @@ fun StatusScreen(
     onAddWalletClick: () -> Unit,
     onReconcileLineClick: (Int) -> Unit = {},
     onDeleteLineClick: (Int) -> Unit = {},
+    onEditWalletClick: (com.hwnix.cash.domain.model.FinancialAccount) -> Unit = {},
     // تم نقله للـ Drawer - احتفاظ بالمعامل للتوافق
     onLogoutClick: () -> Unit = {}
 ) {
@@ -381,6 +382,23 @@ fun StatusScreen(
                                                 Icon(Icons.Filled.AccountBalance, contentDescription = null, modifier = Modifier.size(14.dp))
                                                 Spacer(Modifier.width(4.dp))
                                                 Text("تسوية رصيد $lineName", style = MaterialTheme.typography.labelSmall)
+                                            }
+                                            val phoneStr = info.phoneNumber
+                                            val lineWallet = state.wallets.find { it.simPhone == phoneStr || (phoneStr.isNotEmpty() && it.simPhone.contains(phoneStr)) }
+                                            
+                                            if (lineWallet != null) {
+                                                OutlinedButton(
+                                                    onClick = { onEditWalletClick(lineWallet) },
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE65100)),
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE65100).copy(alpha = 0.5f)),
+                                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                                                ) {
+                                                    Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text("تعديل محفظة $lineName", style = MaterialTheme.typography.labelSmall)
+                                                }
                                             }
 
                                             OutlinedButton(

@@ -143,6 +143,21 @@ class MainActivity : ComponentActivity() {
                         val registerState by registerViewModel.uiState.collectAsState()
                         val statusState by statusViewModel.uiState.collectAsState()
 
+                        val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+                        DisposableEffect(lifecycleOwner) {
+                            val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                                if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                                    if (sessionManager.getAuthToken() != null) {
+                                        statusViewModel.refreshDeviceInfo()
+                                    }
+                                }
+                            }
+                            lifecycleOwner.lifecycle.addObserver(observer)
+                            onDispose {
+                                lifecycleOwner.lifecycle.removeObserver(observer)
+                            }
+                        }
+
                         // فحص حالة تحسين البطارية والتحديثات تلقائياً
                         LaunchedEffect(isStarting) {
                             if (!isStarting) {
@@ -330,6 +345,9 @@ class MainActivity : ComponentActivity() {
                              onDecoupleClick = { statusViewModel.logout { isLoggedIn = false; screenStack.clear(); currentScreen = "status" } }
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
+                                val factoryOnboarding = remember { com.hwnix.cash.core.di.ViewModelFactory() }
+                                val onboardingViewModel: com.hwnix.cash.presentation.onboarding.OnboardingViewModel = ViewModelProvider(this@MainActivity, factoryOnboarding)[com.hwnix.cash.presentation.onboarding.OnboardingViewModel::class.java]
+                                
                                 if (currentScreen == "diagnostics") {
                                     com.hwnix.cash.presentation.screens.DiagnosticsScreen()
                                 } else if (currentScreen == "onboarding_explanation") {
@@ -369,8 +387,6 @@ class MainActivity : ComponentActivity() {
                                         }
                                     )
                                 } else if (currentScreen == "onboarding_wizard") {
-                                    val factoryOnboarding = remember { com.hwnix.cash.core.di.ViewModelFactory() }
-                                    val onboardingViewModel: com.hwnix.cash.presentation.onboarding.OnboardingViewModel = ViewModelProvider(this@MainActivity, factoryOnboarding)[com.hwnix.cash.presentation.onboarding.OnboardingViewModel::class.java]
                                     com.hwnix.cash.presentation.onboarding.OnboardingWizardScreen(
                                         viewModel = onboardingViewModel,
                                         onSuccess = { screenStack.clear(); currentScreen = "setup_completed" },
@@ -389,9 +405,16 @@ class MainActivity : ComponentActivity() {
                                         onBatteryOptimizeClick = {
                                             statusViewModel.disableBatteryOptimization()
                                         },
-                                        onAddWalletClick = { navigateTo("onboarding_wizard") },
+                                        onAddWalletClick = {
+                                            onboardingViewModel.startAddWalletMode()
+                                            navigateTo("onboarding_wizard")
+                                        },
                                         onReconcileLineClick = { statusViewModel.openReconcileDialog(it) },
-                                        onDeleteLineClick = { statusViewModel.openDeleteDialog(it) }
+                                        onDeleteLineClick = { statusViewModel.openDeleteDialog(it) },
+                                        onEditWalletClick = {
+                                            onboardingViewModel.loadWalletForEdit(it)
+                                            navigateTo("onboarding_wizard")
+                                        }
                                     )
                                 }
                                 IconButton(

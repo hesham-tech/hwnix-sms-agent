@@ -3,6 +3,8 @@ package com.hwnix.cash.presentation.onboarding
 import com.hwnix.cash.domain.model.SimCard
 
 data class OnboardingUiState(
+    val isEditMode: Boolean = false,
+    val editingWalletId: Int? = null,
     val currentStep: Int = 1,
     
     // Step 1: SIM Lines Setup

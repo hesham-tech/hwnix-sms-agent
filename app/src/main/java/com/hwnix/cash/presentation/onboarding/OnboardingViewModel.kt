@@ -96,7 +96,7 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
                     line2Name = line2Name,
                     line2Phone = line2Phone,
                     selectedSimPhone = line1Phone.ifBlank { line2Phone },
-                    selectedSender = senders.firstOrNull() ?: ""
+                    selectedSender = ""
                 )
             }
         }
@@ -260,6 +260,39 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
         }
     }
 
+    fun loadWalletForEdit(wallet: com.hwnix.cash.domain.model.FinancialAccount) {
+        _uiState.update {
+            it.copy(
+                isEditMode = true,
+                editingWalletId = wallet.id,
+                currentStep = 2,
+                walletName = wallet.name,
+                selectedSimPhone = wallet.simPhone,
+                selectedSender = wallet.senderIdentifier,
+                dailyWithdrawLimit = wallet.dailyWithdrawLimit?.toString() ?: "",
+                dailyDepositLimit = wallet.dailyDepositLimit?.toString() ?: "",
+                monthlyWithdrawLimit = wallet.monthlyWithdrawLimit?.toString() ?: "",
+                monthlyDepositLimit = wallet.monthlyDepositLimit?.toString() ?: ""
+            )
+        }
+    }
+
+    fun startAddWalletMode() {
+        _uiState.update {
+            it.copy(
+                isEditMode = false,
+                editingWalletId = null,
+                currentStep = 2,
+                walletName = "",
+                selectedSender = "",
+                dailyWithdrawLimit = "",
+                dailyDepositLimit = "",
+                monthlyWithdrawLimit = "",
+                monthlyDepositLimit = ""
+            )
+        }
+    }
+
     fun submitOnboarding() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSubmitting = true, submitError = "") }
@@ -267,8 +300,10 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
                 val state = _uiState.value
                 val body = JsonObject().apply {
                     addProperty("wallet_name", state.walletName)
+                    addProperty("name", state.walletName) // Also add 'name' for the web API
                     addProperty("sim_phone", state.selectedSimPhone)
                     addProperty("sender", state.selectedSender)
+                    addProperty("sender_identifier", state.selectedSender) // For web API
                     addProperty("device_android_id", android.provider.Settings.Secure.getString(context.contentResolver, android.provider.Settings.Secure.ANDROID_ID))
                     addProperty("device_name", android.os.Build.MODEL)
                     addProperty("daily_withdraw_limit", state.dailyWithdrawLimit.toDoubleOrNull() ?: 0.0)
@@ -276,7 +311,12 @@ class OnboardingViewModel(private val context: Context) : ViewModel() {
                     addProperty("monthly_withdraw_limit", state.monthlyWithdrawLimit.toDoubleOrNull() ?: 0.0)
                     addProperty("monthly_deposit_limit", state.monthlyDepositLimit.toDoubleOrNull() ?: 0.0)
                 }
-                val response = ApiClient.getService().completeOnboarding(body)
+                val response = if (state.isEditMode && state.editingWalletId != null) {
+                    ApiClient.getService().updateWallet(state.editingWalletId, body)
+                } else {
+                    ApiClient.getService().completeOnboarding(body)
+                }
+                
                 if (response.isSuccessful) {
                     val sessionManager = com.hwnix.cash.data.local.SessionManager(context)
                     sessionManager.markSetupComplete()

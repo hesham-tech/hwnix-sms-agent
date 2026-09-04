@@ -19,8 +19,8 @@ android {
         applicationId = "com.hwnix.cash"
         minSdk = 23
         targetSdk = 34
-        versionCode = 100
-        versionName = "1.0.95.5"
+        versionCode = 101
+        versionName = "1.0.95.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

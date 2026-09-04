@@ -66,6 +66,13 @@ object ServiceLocator {
         SessionManager(appContext)
     }
 
+    private val _syncEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val syncEvents = _syncEvents.asSharedFlow()
+    
+    fun emitSyncEvent() {
+        _syncEvents.tryEmit(Unit)
+    }
+
     val syncEngine: SyncEngine by lazy {
         SyncEngine(appContext)
     }

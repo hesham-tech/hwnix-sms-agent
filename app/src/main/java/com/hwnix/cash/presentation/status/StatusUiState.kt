@@ -23,6 +23,7 @@ data class StatusUiState(
     val updateStatusMessage: String? = null,
     
     val deviceLines: Map<Int, com.hwnix.cash.domain.model.LineData> = emptyMap(),
+    val wallets: List<com.hwnix.cash.domain.model.FinancialAccount> = emptyList(),
 
     // إعداد الخطوط
     val showSimDialog: Boolean = false,

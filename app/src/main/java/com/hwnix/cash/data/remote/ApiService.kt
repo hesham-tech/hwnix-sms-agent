@@ -6,6 +6,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -96,6 +97,9 @@ interface ApiService {
 
     @POST("v1/agent/onboarding/complete")
     suspend fun completeOnboarding(@Body body: JsonObject): Response<JsonObject>
+
+    @PUT("v1/hwnix-cash/financial-accounts/{id}")
+    suspend fun updateWallet(@Path("id") walletId: Int, @Body body: JsonObject): Response<JsonObject>
 
     @POST("v1/agent/lines/reconcile")
     suspend fun reconcileLine(
