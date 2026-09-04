@@ -1,10 +1,5 @@
 package com.hwnix.cash.presentation.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -32,6 +27,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import java.text.DecimalFormat
+import kotlin.math.abs
 import com.hwnix.cash.data.local.BootTracker
 import com.hwnix.cash.data.local.ServiceHealthMonitor
 import com.hwnix.cash.manager.oem.OEMAutostartHelper
@@ -108,10 +105,7 @@ fun StatusScreen(
             }
 
             // ─── بطاقة تنبيه حدود الحسابات ───────────────────────────────
-            AnimatedVisibility(
-                visible = visible && limitAlertsSummary.isNotEmpty(),
-                enter = fadeIn() + slideInVertically()
-            ) {
+            if (visible && limitAlertsSummary.isNotEmpty()) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -159,10 +153,7 @@ fun StatusScreen(
             }
 
             // ─── البطاقة الرئيسية Hero ────────────────────────────────────
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(tween(400)) + slideInVertically(tween(400))
-            ) {
+            if (visible) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -308,10 +299,7 @@ fun StatusScreen(
 
 
             // ─── بطاقة أرصدة وحدود خطوط الهاتف ────────────────────────────
-            AnimatedVisibility(
-                visible = visible && !isWalletMissing && linesSummary.isNotBlank(),
-                enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 2 }
-            ) {
+            if (visible && !isWalletMissing && linesSummary.isNotBlank()) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -377,14 +365,28 @@ fun StatusScreen(
                                                 }
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 
-                                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                                    Column {
-                                                        Text("الرصيد الفعلي", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                                                        Text("${info.totalActualBalance} ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                                val df = DecimalFormat("#,##0.00")
+                                                val actualStr = df.format(info.totalActualBalance)
+                                                val ledgerStr = df.format(info.totalBalance)
+                                                val isBalanced = abs(info.totalActualBalance - info.totalBalance) < 0.01
+
+                                                if (isBalanced) {
+                                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                            Text("الرصيد", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                                            Text("${actualStr} ج.م", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                                        }
                                                     }
-                                                    Column(horizontalAlignment = Alignment.End) {
-                                                        Text("الرصيد الدفتري", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                                                        Text("${info.totalBalance} ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                                } else {
+                                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                        Column {
+                                                            Text("الرصيد الفعلي", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                                            Text("${actualStr} ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                                        }
+                                                        Column(horizontalAlignment = Alignment.End) {
+                                                            Text("الرصيد الدفتري", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                                            Text("${ledgerStr} ج.م", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                                        }
                                                     }
                                                 }
                                                 if (lineWallet != null && (lineWallet.dailyWithdrawLimit != null || lineWallet.dailyDepositLimit != null)) {
@@ -405,17 +407,21 @@ fun StatusScreen(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                                 ) {
-                                                    OutlinedButton(
-                                                        onClick = { onReconcileLineClick(slot) },
-                                                        modifier = Modifier.weight(1f),
-                                                        shape = RoundedCornerShape(8.dp),
-                                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0D47A1)),
-                                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF0D47A1).copy(alpha = 0.5f)),
-                                                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp)
-                                                    ) {
-                                                        Icon(Icons.Filled.AccountBalance, contentDescription = null, modifier = Modifier.size(14.dp))
-                                                        Spacer(Modifier.width(4.dp))
-                                                        Text("تسوية", style = MaterialTheme.typography.labelSmall)
+                                                    if (!isBalanced) {
+                                                        OutlinedButton(
+                                                            onClick = { onReconcileLineClick(slot) },
+                                                            modifier = Modifier.weight(1f),
+                                                            shape = RoundedCornerShape(8.dp),
+                                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0D47A1)),
+                                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF0D47A1).copy(alpha = 0.5f)),
+                                                            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp)
+                                                        ) {
+                                                            Icon(Icons.Filled.AccountBalance, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                            Spacer(Modifier.width(4.dp))
+                                                            Text("تسوية", style = MaterialTheme.typography.labelSmall)
+                                                        }
+                                                    } else {
+                                                        Spacer(modifier = Modifier.weight(1f))
                                                     }
 
                                                     if (lineWallet != null) {
@@ -470,10 +476,7 @@ fun StatusScreen(
             }
 
             // ─── بطاقة حالة البطارية والحماية ────────────────────────────
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(tween(700)) + slideInVertically(tween(700)) { it / 2 }
-            ) {
+            if (visible) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -558,10 +561,7 @@ fun StatusScreen(
             }
 
             // ─── أزرار التحكم ─────────────────────────────────────────────
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(tween(800)) + slideInVertically(tween(800)) { it / 2 }
-            ) {
+            if (visible) {
                 Column {
                     // زر المزامنة الفورية
                     Button(

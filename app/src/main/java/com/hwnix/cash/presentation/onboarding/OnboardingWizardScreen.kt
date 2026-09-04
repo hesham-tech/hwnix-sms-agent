@@ -455,7 +455,6 @@ fun StepLimits(state: OnboardingUiState, viewModel: OnboardingViewModel) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertLimitField(
     label: String,
@@ -464,7 +463,6 @@ fun AlertLimitField(
     onValueChange: (String) -> Unit,
     onTypeChange: (String) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         OutlinedTextField(
             value = value,
@@ -474,32 +472,12 @@ fun AlertLimitField(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
         
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it },
-            modifier = Modifier.width(130.dp).padding(top = 8.dp)
+        OutlinedButton(
+            onClick = { onTypeChange(if (type == "percentage") "value" else "percentage") },
+            modifier = Modifier.width(130.dp).padding(top = 8.dp),
+            shape = RoundedCornerShape(8.dp)
         ) {
-            OutlinedTextField(
-                value = if (type == "percentage") "نسبة %" else "قيمة ثابتة",
-                onValueChange = {},
-                readOnly = true,
-                modifier = Modifier.menuAnchor(),
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("نسبة %") },
-                    onClick = { onTypeChange("percentage"); expanded = false }
-                )
-                DropdownMenuItem(
-                    text = { Text("قيمة ثابتة") },
-                    onClick = { onTypeChange("value"); expanded = false }
-                )
-            }
+            Text(text = if (type == "percentage") "نسبة %" else "قيمة ثابتة")
         }
     }
     Spacer(modifier = Modifier.height(12.dp))
