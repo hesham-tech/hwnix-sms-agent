@@ -378,7 +378,6 @@ fun StepWalletDetails(state: OnboardingUiState, viewModel: OnboardingViewModel) 
     }
 }
 
-@Composable
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StepLimits(state: OnboardingUiState, viewModel: OnboardingViewModel) {

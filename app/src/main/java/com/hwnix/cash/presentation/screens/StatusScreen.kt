@@ -82,34 +82,29 @@ fun StatusScreen(
             val isWalletMissing = remember(state.isRefreshing) { sessionManager.isWalletMissing() }
 
             if (isWalletMissing) {
-                androidx.compose.material3.AlertDialog(
-                    onDismissRequest = { /* Cannot dismiss until wallet is created */ },
-                    title = {
-                        Text(
-                            text = "إضافة محفظة",
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    text = {
-                        Text("لابد من اضافة محفظة حتي يعمل التطبيق بشكل طبيعي وحساب الارصدة والحدود وما الي ذلك.")
-                    },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                onAddWalletClick()
-                            }
-                        ) {
-                            Text("إنشاء محفظة")
-                        }
-                    },
-                    icon = {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Icon(
-                            androidx.compose.material.icons.Icons.Filled.AccountBalanceWallet,
+                            androidx.compose.material.icons.Icons.Filled.Warning,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "لابد من إضافة محفظة حتى يعمل التطبيق بشكل طبيعي وتتم حساب الأرصدة والحدود. يرجى إنشاء محفظة من بطاقات الخطوط أدناه.",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
-                )
+                }
             }
 
             // ─── بطاقة تنبيه حدود الحسابات ───────────────────────────────
