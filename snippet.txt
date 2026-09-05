@@ -1,0 +1,35 @@
+437:                                                             Spacer(Modifier.width(4.dp))
+438:                                                             Text("تعديل", style = MaterialTheme.typography.labelSmall)
+439:                                                         }
+440:                                                     } else {
+441:                                                         OutlinedButton(
+442:                                                             onClick = { onAddWalletForLineClick(info.phoneNumber) },
+443:                                                             modifier = Modifier.weight(2f),
+444:                                                             shape = RoundedCornerShape(8.dp),
+445:                                                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2E7D32)),
+446:                                                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2E7D32).copy(alpha = 0.5f)),
+447:                                                             contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp)
+448:                                                         ) {
+449:                                                             Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+450:                                                             Spacer(Modifier.width(4.dp))
+451:                                                             Text("إنشاء محفظة لهذا الخط", style = MaterialTheme.typography.labelSmall)
+452:                                                         }
+453:                                                     }
+454: 
+455:                                                     OutlinedButton(
+456:                                                         onClick = { onDeleteLineClick(slot) },
+457:                                                         modifier = Modifier.weight(1f),
+458:                                                         shape = RoundedCornerShape(8.dp),
+459:                                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB71C1C)),
+460:                                                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFB71C1C).copy(alpha = 0.5f)),
+461:                                                         contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp)
+462:                                                     ) {
+463:                                                         Icon(Icons.Filled.DeleteForever, contentDescription = null, modifier = Modifier.size(14.dp))
+464:                                                         Spacer(Modifier.width(4.dp))
+465:                                                         Text("حذف", style = MaterialTheme.typography.labelSmall)
+466:                                                     }
+467:                                                 }
+468:                                             }
+469:                                         }
+470:                                     }
+471:                                 }
